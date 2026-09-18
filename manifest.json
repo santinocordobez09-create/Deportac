@@ -1,0 +1,17 @@
+{
+  "name": "Pizarra Fit",
+  "short_name": "Pizarra Fit",
+  "description": "Pizarra táctica animada y planificador de trabajos físicos para preparadores de fútbol",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0d1511",
+  "theme_color": "#2f7d3a",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
