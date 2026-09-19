@@ -95,8 +95,20 @@ body.toolsTop .pi canvas,body.toolsTop .pi svg.cur{width:48px;height:48px}
 .ptab.on{color:var(--fg);border-bottom-color:var(--accent);background:var(--panel)}
 body.zen #pal,body.zen #tl #scenes,body.zen #freebar{display:none!important}
 body.zen header{display:none}
-#tl.mini #scenes{display:none}
-#pal h4{margin:14px 2px 6px;font:800 14px 'Barlow Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line);padding-bottom:3px}
+#tl.mini .sc{width:38px;aspect-ratio:auto;height:30px;border-width:1.5px}
+#tl.mini .sc canvas{display:none}
+#tl.mini .sc span{position:static;display:flex;width:100%;height:100%;align-items:center;justify-content:center;background:transparent;font-size:14px}
+#tl.mini .sc .x{display:none}
+#tl.mini #scAdd,#tl.mini .scadd{width:auto;height:30px;aspect-ratio:auto;padding:0 10px;font-size:13px}
+#tl{padding-top:4px}
+.tlc{min-height:0}
+#pal{display:flex;flex-direction:column;gap:0;padding:0}
+#pal .ptabs{display:flex;flex-wrap:wrap;gap:3px;padding:6px 6px 0;border-bottom:1px solid var(--line);background:var(--panel2);overflow:visible}
+#pal .ptab{flex:1 1 auto;text-align:center;font-size:12.5px;padding:4px 6px 6px;border-radius:8px 8px 0 0}
+#pal .pg{display:none;padding:8px 7px}
+#pal .pg.open{display:block}
+#pal .pg.pfix{display:block;padding:7px 7px 0}
+#pal h4{display:none}
 .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(66px,1fr));gap:7px}
 .pi{border:1px solid var(--line);background:var(--panel2);border-radius:12px;padding:5px 3px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-weight:600;font-size:11.5px;line-height:1.15;text-align:center;min-height:82px;justify-content:center}
 .pi canvas,.pi svg.cur{width:52px;height:52px;border-radius:10px;background:#2f7d3a;display:block}
@@ -105,7 +117,12 @@ body.zen header{display:none}
 .pi.on{outline:2px solid var(--accent);outline-offset:0;background:var(--panel)}
 #stageWrap{grid-area:stage;position:relative;background:#0b120e;min-height:170px;min-width:0;overflow:hidden}
 #stage{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
-#hint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(10,18,14,.8);color:#fff;padding:12px 18px;border-radius:14px;text-align:center;pointer-events:none;max-width:80%;font-weight:500}
+#hint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(10,18,14,.88);color:#fff;padding:16px 20px;border-radius:16px;text-align:center;max-width:min(520px,88%);font-weight:500;z-index:5;border:1px solid rgba(255,255,255,.14)}
+#hint .hh{display:block;font:800 21px 'Barlow Condensed',sans-serif;letter-spacing:.03em;margin-bottom:10px}
+#hint .hbtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+#hint .hbtns .btn{flex:1 1 160px;flex-direction:column;gap:2px;padding:10px 12px;font:800 16px 'Barlow Condensed',sans-serif;letter-spacing:.03em;min-height:0}
+#hint .hbtns .btn small{font:500 11.5px 'Barlow',sans-serif;opacity:.85;letter-spacing:0}
+#hint .hm{display:block;margin-top:9px;font-size:12px;opacity:.72}
 #topnote{position:absolute;left:50%;top:8px;transform:translateX(-50%);max-width:min(560px,58%);background:rgba(10,18,14,.82);color:#fff;padding:6px 14px;border-radius:12px;font-weight:600;font-size:13px;text-align:center;pointer-events:none;z-index:4}
 #topnote.act{pointer-events:auto;background:var(--accent);color:var(--on-accent);display:flex;gap:10px;align-items:center;padding:5px 6px 5px 14px}
 #topnote.act b{font-weight:800}
@@ -333,7 +350,9 @@ body.zen header{display:none}
       <canvas id="stage" aria-label="Pizarra de entrenamiento"></canvas>
       <div id="legend"></div>
       <div id="topnote" hidden></div>
-      <div id="hint">Elegí un elemento a la izquierda y tocá la cancha para ponerlo. Arrastralo para acomodarlo.<br>Tocá un jugador y elegí Correr, Conducir o Pasar: después arrastrá los que quieras sin volver a elegir.</div>
+      <div id="hint"><b class="hh">¿Cómo querés armar este ejercicio?</b>
+        <div class="hbtns"><button class="btn pri" id="hFree">✥ Pizarra libre<small>solo poner y mover, sin animación</small></button><button class="btn pri" id="hAnim">▶ Con escenas<small>recorridos, pases y video</small></button></div>
+        <span class="hm">Después lo podés cambiar cuando quieras.</span></div>
       <div id="radial" hidden></div>
       <div id="selbar" hidden></div>
     </div>
@@ -1032,7 +1051,7 @@ function overlays(fr){
     else tn.textContent=txt;
     tn.hidden=!act&&!txt;
   }
-  $('#hint').hidden=!!S.pv||S.ex.scenes.length>1||sc.els.length>0||sc.arrows.length>0||!!S.tmp;
+  $('#hint').hidden=!!S.pv||S.ex.scenes.length>1||sc.els.length>0||sc.arrows.length>0||!!S.tmp||S.hintOff;
   placeRadial();
 }
 function placeRadial(){
@@ -1433,9 +1452,9 @@ function renderScenes(){
 }
 function setTools(top,save){
   document.body.classList.toggle('toolsTop',!!top);
-  if(save!==false)try{localStorage.setItem('pf.tools',top?'top':'side')}catch(e){}
+  if(save!==false)try{localStorage.setItem('pf.tools2',top?'top':'side')}catch(e){}
   buildPalette();setTool(S.tool);fit();
-  toast(top?'Herramientas arriba, en fila':'Herramientas al costado: la cancha queda más alta');
+  toast(top?'Herramientas arriba: se ven todas en fila, pero la cancha pierde alto':'Herramientas al costado: la cancha queda lo más grande posible');
 }
 function setZen(on){
   document.body.classList.toggle('zen',!!on);
@@ -1541,6 +1560,8 @@ $('#exName').addEventListener('input',e=>{S.ex.name=e.target.value;S.dirty=true;
 $('#bTools').addEventListener('click',()=>setTools(!document.body.classList.contains('toolsTop')));
 $('#bZen').addEventListener('click',()=>setZen(!document.body.classList.contains('zen')));
 $('#bScFold').addEventListener('click',()=>{$('#tl').classList.toggle('mini');$('#bScFold').innerHTML=ic($('#tl').classList.contains('mini')?'up':'down');fit()});
+$('#hFree').addEventListener('click',()=>{S.ex.free=true;S.hintOff=true;applyMode();renderScenes();renderCard();commit();paint();toast('Pizarra libre: poné y movés lo que quieras. Cuando quieras animarlo, tocá "Convertir en animación"')});
+$('#hAnim').addEventListener('click',()=>{S.ex.free=false;S.hintOff=true;applyMode();renderScenes();renderCard();commit();paint();toast('Modo escenas: tocá un jugador y elegí Correr para dibujar su recorrido')});
 $('#bAnim').addEventListener('click',toAnim);
 $('#bPdf').addEventListener('click',exportPDF);
 $('#fieldSel').addEventListener('change',e=>{S.ex.field=e.target.value;commit()});
@@ -1562,6 +1583,10 @@ function saveToLib(){
   if(store.set('pf.lib',S.lib)){S.dirty=false;toast('Guardado en la biblioteca')}else toast('No se pudo guardar: no hay espacio en el dispositivo');
   saveDraft();
 }
+function setFreeMode(f){
+  if(f&&S.ex.scenes.length>1){toast('Este ejercicio ya tiene varias escenas: borrá las de más para volver al modo libre');return false}
+  S.ex.free=!!f;S.hintOff=true;applyMode();renderScenes();renderCard();commit();paint();return true;
+}
 function openDetails(){
   const x=S.ex,types=['Fuerza','Velocidad','Resistencia','Técnica','Coordinación','Pliometría','Movilidad','Juego reducido','Circuito'];
   const used=[...new Set(S.lib.map(v=>v.folder).filter(Boolean).concat(types))];
@@ -1569,6 +1594,7 @@ function openDetails(){
     <label>Tipo de trabajo<input list="dlT" data-d="folder" value="${esc(x.folder)}" placeholder="Ej: Velocidad"><datalist id="dlT">${used.map(t=>`<option value="${esc(t)}">`).join('')}</datalist></label>
     <label>Etiquetas<input data-d="tags" value="${esc(x.tags)}" placeholder="separadas por coma"></label>
     <label class="full">Objetivo<textarea data-d="objective" rows="2">${esc(x.objective)}</textarea></label>
+    <label class="full">Modo de trabajo<span class="row" style="gap:6px;margin-top:3px"><button class="chip${x.free?' on':''}" data-md="free" type="button">Pizarra libre (estática)</button><button class="chip${x.free?'':' on'}" data-md="anim" type="button">Con escenas (animación)</button></span></label>
     <label>Series<input type="number" min="0" data-d="series" value="${esc(x.series)}"></label>
     <label>Repeticiones (texto)<input data-d="reps" value="${esc(x.reps)}" placeholder="8 / 30 seg"></label>
     <label>Trabajo (seg)<input type="number" min="0" data-d="work" value="${esc(x.work)}"></label>
@@ -1581,9 +1607,11 @@ function openDetails(){
   </div><p class="muted">Las estadísticas de distancia multiplican lo animado por las veces que se repite y por las series.</p>
   <div class="mrow"><button class="btn" id="dSt">${ic('chart')}Ver estadísticas</button><button class="btn pri" id="dOk">Listo</button></div>`);
   $('#mBody').oninput=e=>{const k=e.target.dataset.d;if(!k)return;S.ex[k]=e.target.type==='number'?(e.target.value===''?'':+e.target.value):e.target.value;S.dirty=true;saveDraft()};
+  $('#mBody').addEventListener('click',e=>{const md=e.target.closest('[data-md]');if(!md)return;if(setFreeMode(md.dataset.md==='free'))openDetails()});
   $('#dOk').onclick=closeModal;$('#dSt').onclick=()=>{closeModal();openStats()};
 }
 function loadEx(ex){
+  S.hintOff=!!(ex&&(ex.free||(ex.scenes&&(ex.scenes.length>1||(ex.scenes[0].els||[]).length))));
   stopAud();S.ex=norm(ex);S.cur=0;S.sel=null;S.menu=false;S.pv=null;S.playing=false;S.tmp=null;S.tseg=null;S.drag=null;S.act='move';S.dirty=false;propagateEx(S.ex,0);resetHist();saveDraft();
   audLoad(audIds(S.ex)).then(()=>renderScenes());
   applyMode();$('#exName').value=ex.name;$('#fieldSel').value=ex.field;setPlayIcon();$('#scrub').value=0;renderScenes();renderCard();setView('board');fit();
@@ -2067,7 +2095,7 @@ function openTemplates(){
     const ph=e.target.closest('[data-ph]');if(ph){openPhysical(ph.dataset.ph);return}
     const b=e.target.closest('.tpl');if(!b)return;const i=+b.dataset.i;
     const free=b.dataset.free==='1';
-    const go=()=>{closeModal();loadEx(i<0?newEx(free):TEMPLATES[i].b());toast(i<0?(free?'Pizarra libre: poné lo que quieras, sin animación':'Ejercicio en blanco'):'Plantilla cargada: tocá ▶ para verla')};
+    const go=()=>{closeModal();S.hintOff=true;loadEx(i<0?newEx(free):TEMPLATES[i].b());toast(i<0?(free?'Pizarra libre: poné lo que quieras, sin animación':'Ejercicio en blanco'):'Plantilla cargada: tocá ▶ para verla')};
     if(S.dirty){closeModal();ask('Tenés cambios sin guardar en este ejercicio. ¿Empezar uno nuevo igual?','Empezar nuevo',go)}else go();
   };
 }
@@ -2334,8 +2362,9 @@ addEventListener('keydown',e=>{
   hydrateIcons();themeIcon();
   $('#bUndo').innerHTML=ic('undo');$('#bRedo').innerHTML=ic('redo');$('#loopB').innerHTML=ic('repeat');$('#loopB').classList.add('on');setPlayIcon();
   $('#legend').innerHTML=Object.keys(PACES).map(k=>`<span class="lg"><i style="background:${PACES[k].c}"></i>${PACES[k].n}</span>`).join('')+'<span class="lg"><i style="background:#fff"></i>Pase</span>';
-  let tp='top';try{tp=localStorage.getItem('pf.tools')||(window.innerWidth>=1100?'top':'side')}catch(e){}
+  let tp='side';try{tp=localStorage.getItem('pf.tools2')||'side'}catch(e){}
   document.body.classList.toggle('toolsTop',tp==='top'&&window.innerWidth>=900);
+  if(window.innerHeight<860){$('#tl').classList.add('mini');$('#bScFold').innerHTML=ic('up')}
   $('#fieldSel').innerHTML=Object.keys(FIELDS).map(k=>`<option value="${k}">${FIELDS[k].n}</option>`).join('');
   buildPalette();
   S.lib=S.lib.map(norm);
