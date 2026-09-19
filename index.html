@@ -126,6 +126,12 @@ body.zen header{display:none}
 #topnote{position:absolute;left:50%;top:8px;transform:translateX(-50%);max-width:min(560px,58%);background:rgba(10,18,14,.82);color:#fff;padding:6px 14px;border-radius:12px;font-weight:600;font-size:13px;text-align:center;pointer-events:none;z-index:4}
 #topnote.act{pointer-events:auto;background:var(--accent);color:var(--on-accent);display:flex;gap:10px;align-items:center;padding:5px 6px 5px 14px}
 #topnote.act b{font-weight:800}
+#recbar{position:absolute;left:50%;top:10px;transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:#b91c1c;color:#fff;padding:6px 8px 6px 14px;border-radius:12px;font-weight:700;z-index:6;box-shadow:0 6px 18px rgba(0,0,0,.4);max-width:92%}
+#recbar .rdot{width:10px;height:10px;border-radius:50%;background:#fff;animation:rp 1s infinite}
+#recbar small{font-weight:500;opacity:.9;font-size:12px}
+#recbar .btn{background:rgba(255,255,255,.2);border-color:transparent;color:#fff;min-height:30px;padding:3px 12px}
+@keyframes rp{0%,100%{opacity:1}50%{opacity:.25}}
+#countdown{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(6,12,9,.55);z-index:7;font:800 130px 'Barlow Condensed',sans-serif;color:#fff;text-shadow:0 6px 24px rgba(0,0,0,.6)}
 #topnote.act .btn{min-height:28px;padding:2px 10px;font-size:12px;background:rgba(255,255,255,.18);color:inherit;border-color:transparent}
 #legend{position:absolute;right:8px;top:8px;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;pointer-events:none;max-width:24%;z-index:3}
 .lg{background:rgba(10,18,14,.72);color:#fff;border-radius:999px;padding:2px 9px;font:600 11px 'Barlow',sans-serif;display:flex;gap:5px;align-items:center}
@@ -353,6 +359,8 @@ body.zen header{display:none}
       <div id="hint"><b class="hh">¿Cómo querés armar este ejercicio?</b>
         <div class="hbtns"><button class="btn pri" id="hFree">✥ Pizarra libre<small>solo poner y mover, sin animación</small></button><button class="btn pri" id="hAnim">▶ Con escenas<small>recorridos, pases y video</small></button></div>
         <span class="hm">Después lo podés cambiar cuando quieras.</span></div>
+      <div id="recbar" hidden></div>
+      <div id="countdown" hidden></div>
       <div id="radial" hidden></div>
       <div id="selbar" hidden></div>
     </div>
@@ -1351,7 +1359,7 @@ function iconFor(id){
   const it=ITEMS[id],cv=document.createElement('canvas');cv.width=cv.height=92;const ctx=cv.getContext('2d');
   if(it.ar==='measure'){ctx.strokeStyle='#38e0ff';ctx.lineWidth=4;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(14,60);ctx.lineTo(78,32);ctx.moveTo(10,46);ctx.lineTo(20,72);ctx.moveTo(72,20);ctx.lineTo(84,46);ctx.stroke();ctx.fillStyle='#fff';ctx.font=`800 20px ${FONT}`;ctx.textAlign='center';ctx.fillText('12 m',46,26)}
   else if(it.ar){ctx.setTransform(14,0,0,14,46,46);drawArrow(ctx,{k:it.ar,c:it.c,x1:-2.4,y1:1.9,x2:2.4,y2:-1.9,cx:0,cy:0})}
-  else{ctx.setTransform(it.ik||16,0,0,it.ik||16,46,46);drawEl(ctx,{t:it.t,x:0,y:0,r:0,s:1,c:it.c,l:it.t==='player'?(it.l||'1'):(it.t==='text'?'Aa':(it.stn?'E1':'')),w:it.w,h:it.h})}
+  else{ctx.setTransform(it.ik||16,0,0,it.ik||16,46,46);drawEl(ctx,{t:it.t,sh:it.sh,x:0,y:0,r:0,s:1,c:it.c,l:it.t==='player'?(it.l||'1'):(it.t==='text'?'Aa':(it.stn?'E1':'')),w:it.w,h:it.h})}
   return cv;
 }
 function buildPalette(){
@@ -1392,6 +1400,7 @@ const hasMoves=()=>S.ex.scenes.some(s=>Object.keys(s.routes).some(k=>s.routes[k]
 function safePlay(a){try{const r=a.play();if(r&&r.catch)r.catch(()=>{})}catch(e){}}
 function stopAud(){[S.aEl,S.gEl,S.pAud].forEach(a=>{if(a){try{a.pause()}catch(e){}}});S.aKey='';S.gOn=false}
 function audSync(force){
+  if(S.narr&&S.narr.rec)return;
   const pv=S.pv;
   if(!S.playing||!pv)return;
   const ex=S.ex,i=sceneAt(ex,pv.t),sc=ex.scenes[i],local=pv.t-startsOf(ex)[i];
@@ -1412,20 +1421,40 @@ function play(){
   let t=S.pv?S.pv.t:startsOf(S.ex)[S.cur];if(t>=totalTime()-.05)t=0;
   S.pv={t};setPlayIcon();last=performance.now();audSync(true);requestAnimationFrame(tick);
 }
+function playScene(i,rec){
+  const st=startsOf(S.ex)[i],W=timing(S.ex.scenes[i]).W;
+  S.sel=null;S.menu=false;renderCard();
+  S.narr={i,end:st+W-.002,rec:!!rec};
+  S.speed=1;$('#spd').value='1';
+  S.playing=true;S.pv={t:st};setPlayIcon();last=performance.now();
+  if(!rec)audSync(true);
+  requestAnimationFrame(tick);
+}
 function tick(ts){
   if(!S.playing)return;
   S.pv.t+=(ts-last)/1000*S.speed;last=ts;
   const tot=totalTime();let wrap=false;
+  if(S.narr){
+    if(S.pv.t>=S.narr.end){
+      S.pv.t=S.narr.end;S.playing=false;setPlayIcon();
+      if(!S.narr.rec){stopAud();S.narr=null}
+    }
+    $('#scrub').value=Math.round(S.pv.t/tot*1000);
+    if(S.playing&&!S.narr.rec)audSync(false);
+    paint();
+    if(S.playing)requestAnimationFrame(tick);
+    return;
+  }
   if(S.pv.t>=tot){if(S.loop){S.pv.t=0;wrap=true}else{S.pv.t=tot;S.playing=false;setPlayIcon();stopAud()}}
   $('#scrub').value=Math.round(S.pv.t/tot*1000);
   if(S.playing)audSync(wrap);
   paint();
   if(S.playing)requestAnimationFrame(tick);
 }
-function pause(){S.playing=false;setPlayIcon();stopAud()}
+function pause(){S.playing=false;S.narr=null;setPlayIcon();stopAud()}
 function stopPreview(){
   if(!S.pv)return;const i=sceneAt(S.ex,S.pv.t);
-  stopAud();S.pv=null;S.playing=false;setPlayIcon();$('#scrub').value=0;if(i!==S.cur){S.cur=i;renderScenes()}renderCard();
+  stopAud();S.pv=null;S.playing=false;S.narr=null;setPlayIcon();$('#scrub').value=0;if(i!==S.cur){S.cur=i;renderScenes()}renderCard();
 }
 $('#bPlay').onclick=play;
 $('#scrub').addEventListener('input',e=>{pause();S.sel=null;S.menu=false;renderCard();S.pv={t:e.target.value/1000*totalTime()};paint()});
@@ -1866,7 +1895,7 @@ async function audGC(){
 }
 async function audDuration(blob){
   try{const AC=window.AudioContext||window.webkitAudioContext,ac=new AC();const buf=await ac.decodeAudioData(await blob.arrayBuffer());if(ac.close)ac.close();if(buf.duration>0)return buf.duration}catch(e){}
-  return new Promise(res=>{try{const a=new Audio(URL.createObjectURL(blob));a.onloadedmetadata=()=>res(isFinite(a.duration)?a.duration:0);a.onerror=()=>res(0)}catch(e){res(0)}});
+  return new Promise(res=>{let done=false;const fin=v=>{if(!done){done=true;res(v)}};setTimeout(()=>fin(0),2500);try{const a=new Audio(URL.createObjectURL(blob));a.onloadedmetadata=()=>fin(isFinite(a.duration)?a.duration:0);a.onerror=()=>fin(0)}catch(e){fin(0)}});
 }
 async function dupAudio(ex){
   const map={};
@@ -1879,15 +1908,19 @@ function audHTML(kind){
   const mine=!!(S.rec&&S.rec.kind===kind&&(kind==='global'||S.rec.si===S.cur)),other=!!(S.rec&&!mine);
   if(mine)return`<span class="rec"><i class="rdot"></i> Grabando <b class="recT">0:00</b></span><button class="btn danger" data-au="stop" data-k="${kind}">${ic('stop',14)}Detener</button>`;
   const lbl=kind==='global'?'Audio general del video':'Explicación de esta escena';
-  if(a)return`<b>${ic('volume',16)} ${lbl} · ${fmtT(a.dur)}</b><button class="btn" data-au="play" data-k="${kind}">${ic('play',14)}Escuchar</button><button class="btn" data-au="rec" data-k="${kind}"${other?' disabled':''}>${ic('mic',14)}Regrabar</button><button class="btn" data-au="up" data-k="${kind}">${ic('upload',14)}Cambiar</button><button class="btn danger" data-au="del" data-k="${kind}" aria-label="Quitar audio">${ic('trash',14)}</button>`;
+  if(a)return`<b>${ic('volume',16)} ${lbl} · ${fmtT(a.dur)}</b>${kind==='scene'?`<button class="btn pri" data-au="playsc">${ic('play',14)}Ver la escena con tu voz</button>`:''}<button class="btn" data-au="play" data-k="${kind}">${ic('play',14)}Escuchar</button><button class="btn" data-au="${kind==='scene'?'recsc':'rec'}" data-k="${kind}"${other?' disabled':''}>${ic('mic',14)}Regrabar${kind==='scene'?' narrando':''}</button><button class="btn" data-au="up" data-k="${kind}">${ic('upload',14)}Cambiar</button><button class="btn danger" data-au="del" data-k="${kind}" aria-label="Quitar audio">${ic('trash',14)}</button>`;
+  if(kind==='scene')return`<b>${lbl}</b><button class="btn pri" data-au="recsc"${other?' disabled':''}>${ic('mic',14)}Grabar hablando sobre la escena</button><button class="btn" data-au="rec" data-k="scene"${other?' disabled':''}>${ic('mic',14)}Grabar sin mirar</button>`+`<button class="btn" data-au="up" data-k="${kind}">${ic('upload',14)}Subir audio</button>`;
   return`<b>${lbl}</b><button class="btn pri" data-au="rec" data-k="${kind}"${other?' disabled':''}>${ic('mic',14)}Grabar</button><button class="btn" data-au="up" data-k="${kind}">${ic('upload',14)}Subir audio</button>`;
 }
 function renderAudRow(){const r=$('#audRow');if(r)r.innerHTML=audHTML('scene')}
 function refreshAud(){renderAudRow();const g=$('#gAud');if(g)g.innerHTML=audHTML('global')}
 function updRec(){const t=S.rec?(performance.now()-S.rec.t0)/1000:0;$$('.recT').forEach(el=>{el.textContent=fmtT(t)})}
+$('#recbar').addEventListener('click',e=>{audAction(e)});
 function audAction(e){
   const b=e.target.closest('[data-au]');if(!b)return false;const a=b.dataset.au,k=b.dataset.k;
   if(a==='rec')recStart(k);
+  else if(a==='recsc')recStart('scene',true);
+  else if(a==='playsc'){const i=S.cur;stopPreview();S.cur=i;playScene(i,false)}
   else if(a==='stop')recStop();
   else if(a==='up'){S.upKind=k;S.upScene=S.cur;$('#audFile').value='';$('#audFile').click()}
   else if(a==='del'){const tgt=k==='global'?S.ex:scene();delete tgt.aud;commit();refreshAud()}
@@ -1903,10 +1936,34 @@ function previewAud(k){
 async function attachAudio(kind,blob,dur,si){
   const id=uid(),saved=await audPut(id,blob);
   const tgt=kind==='global'?S.ex:S.ex.scenes[si==null?S.cur:si];if(!tgt)return;
-  tgt.aud={id,dur:Math.round((dur||1)*10)/10};commit();refreshAud();
-  toast(saved?'Audio guardado':'Audio cargado, pero este navegador no lo puede guardar: se pierde al cerrar');
+  tgt.aud={id,dur:Math.round((dur||1)*10)/10};commit();refreshAud();renderScenes();
+  if(!saved){toast('Audio cargado, pero este navegador no lo puede guardar: se pierde al cerrar');return}
+  if(kind==='scene'){
+    const sc=S.ex.scenes[si==null?S.cur:si],nat=natural(sc),d=tgt.aud.dur;
+    toast(d>nat+.3?`Listo: la escena dura ${fmtT(d+.4)} y queda quieta al final mientras seguís explicando`:`Listo: ${fmtT(d)} de explicación sobre la escena`);
+  }else toast('Audio general guardado');
 }
-async function recStart(kind){
+function countdown(n){
+  return new Promise(res=>{
+    const el=$('#countdown');let k=n;
+    el.hidden=false;el.textContent=k;
+    const iv=setInterval(()=>{
+      k--;
+      if(k<=0){clearInterval(iv);el.hidden=true;el.textContent='';res()}
+      else el.textContent=k;
+    },700);
+  });
+}
+function updRecBar(){
+  const b=$('#recbar');if(!b)return;
+  if(!S.rec){b.hidden=true;b.innerHTML='';return}
+  const narr=!!(S.rec.narr||(S.narr&&S.narr.rec));
+  if(b.hidden){
+    b.hidden=false;
+    b.innerHTML=`<i class="rdot"></i><span>Grabando <b class="recT">0:00</b></span><small>${narr?'Escena '+((S.rec.si||0)+1)+': contá lo que va pasando':'hablá y después tocá Detener'}</small><button class="btn" data-au="stop" data-k="${S.rec.kind}">${ic('stop',14)}Detener</button>`;
+  }
+}
+async function recStart(kind,withPlay){
   if(S.rec)return;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!window.MediaRecorder){toast('Este navegador no permite grabar. Podés subir un audio ya grabado.');return}
   let stream;
@@ -1914,15 +1971,25 @@ async function recStart(kind){
   const mimes=['audio/webm;codecs=opus','audio/mp4','audio/webm'],mime=mimes.find(m=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m))||'';
   const mr=new MediaRecorder(stream,mime?{mimeType:mime,audioBitsPerSecond:40000}:undefined),chunks=[];
   mr.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
-  const rec={kind,si:S.cur,mr,stream,t0:performance.now()};S.rec=rec;
+  const rec={kind,si:S.cur,narr:!!withPlay,mr,stream,t0:performance.now()};S.rec=rec;
   mr.onstop=async()=>{
     stream.getTracks().forEach(t=>t.stop());clearInterval(rec.tm);S.rec=null;
+    if(S.narr&&S.narr.rec){S.narr=null;S.playing=false;setPlayIcon();stopPreview()}
+    updRecBar();
     const type=(mr.mimeType||mime||'audio/webm').split(';')[0],blob=new Blob(chunks,{type}),timer=(performance.now()-rec.t0)/1000;
     let dur=await audDuration(blob);if(!dur||!isFinite(dur))dur=timer;
     await attachAudio(kind,blob,dur,rec.si);
   };
-  mr.start();rec.tm=setInterval(()=>{if((performance.now()-rec.t0)/1000>=180)recStop();updRec()},250);
-  refreshAud();
+  if(withPlay){
+    stopPreview();
+    toast('Mirá la cancha: arranca la escena y vos narrás');
+    await countdown(3);
+    if(!S.rec)return;
+  }
+  mr.start();rec.t0=performance.now();
+  rec.tm=setInterval(()=>{if((performance.now()-rec.t0)/1000>=180)recStop();updRec();updRecBar()},250);
+  refreshAud();updRecBar();
+  if(withPlay)playScene(rec.si,true);
 }
 function recStop(){if(S.rec&&S.rec.mr.state!=='inactive')S.rec.mr.stop()}
 $('#tp').addEventListener('click',e=>{audAction(e)});
