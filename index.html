@@ -167,6 +167,10 @@ body.zen header{display:none}
 #tl{grid-area:tl;background:var(--panel);border-top:1px solid var(--line);padding:5px 10px 7px;min-width:0}
 .tlc{display:flex;gap:6px;align-items:center;margin-bottom:6px;overflow-x:auto}
 .tlc .btn{flex:none}
+.ratebox{display:inline-flex;gap:5px;align-items:center;flex-wrap:wrap;margin-left:6px;padding-left:10px;border-left:1px solid var(--line)}
+#recbar .ratebox{border:0;padding:0;margin:0}
+#recbar .chip{background:rgba(255,255,255,.18);border-color:transparent;color:#fff}
+#recbar .chip.on{background:#fff;color:#b91c1c}
 #bScFold{position:absolute;right:10px;top:-14px;width:30px;height:26px;border-radius:8px}
 #tl{position:relative}
 .tlc input[type=range]{flex:1 1 120px;min-width:80px;min-height:0;border:0;background:transparent;accent-color:var(--accent);height:28px}
@@ -927,9 +931,10 @@ function norm(ex){
 
 /* ============ tiempos y cuadros de animación ============ */
 function natural(sc){let m=0;sc.els.forEach(e=>{const r=sc.routes[e.id];if(r&&r.segs.length)m=Math.max(m,(r.d||0)+routeInfo(e,r).T)});return m}
+const scRate=sc=>(sc&&sc.rate>0?sc.rate:1);
 function timing(sc){
-  const n=natural(sc);let W=n>0?n+.6:1.4,scale=1;
-  if(sc.dur>0){W=sc.dur;if(sc.dur<n+.3)scale=n/Math.max(.3,sc.dur-.3)}
+  const rt=scRate(sc),n=natural(sc)/rt;let W=n>0?n+.6:1.4,scale=rt;
+  if(sc.dur>0){W=sc.dur;if(sc.dur<n+.3)scale=rt*(n/Math.max(.3,sc.dur-.3))}
   const ad=sc.aud&&sc.aud.dur>0?sc.aud.dur:0;if(ad>0&&W<ad+.4)W=ad+.4;
   return{n,W,scale};
 }
@@ -1729,7 +1734,22 @@ async function exportVideo(){
   if(cancel){closeModal();return}
   const type=(rec.mimeType||mime||'video/webm').split(';')[0],blob=new Blob(chunks,{type}),url=URL.createObjectURL(blob),ext=type.includes('mp4')?'mp4':'webm';
   const nm=(ex.name||'ejercicio').replace(/[^\w\-]+/g,'_');
-  openModal('Video listo',`<video class="prev" src="${url}" controls playsinline></video><p class="muted">${withAud?'Incluye tus audios. ':''}Mantené presionado el video para guardarlo o compartirlo por WhatsApp.</p><div class="mrow"><a class="btn pri" href="${url}" download="${nm}.${ext}">Descargar video</a></div>`);
+  const mb=(blob.size/1048576).toFixed(1);
+  openModal('Video listo',`<video class="prev" src="${url}" controls playsinline></video>
+  <p class="muted">${withAud?'Incluye tus audios. ':''}${ext.toUpperCase()} · ${mb} MB · ${fmtT(dur)}</p>
+  <div class="mrow" style="flex-wrap:wrap;gap:8px">
+    <button class="btn pri" id="vDl">${ic('download',16)}Descargar video</button>
+    <button class="btn" id="vShare" hidden>${ic('upload',16)}Compartir</button>
+    <a class="btn" id="vOpen" href="${url}" target="_blank" rel="noopener">Abrir en otra pestaña</a>
+  </div>
+  <p class="muted" id="vHelp" style="margin-bottom:0">Si no lo encontrás, fijate en la carpeta Descargas. En el celular también podés mantener presionado el video de arriba para guardarlo.</p>`);
+  const shBtn=$('#vShare');
+  try{const f=new File([blob],`${nm}.${ext}`,{type:type});if(navigator.canShare&&navigator.canShare({files:[f]}))shBtn.hidden=false}catch(e){}
+  $('#vDl').onclick=()=>{
+    if(dlBlob(blob,`${nm}.${ext}`))toast('Descargando el video…');
+    else{$('#vHelp').textContent='Este navegador bloqueó la descarga: tocá "Abrir en otra pestaña" y guardalo desde ahí.';toast('No se pudo descargar automáticamente')}
+  };
+  shBtn.onclick=async()=>{if(!await shareBlob(blob,`${nm}.${ext}`,ex.name||'Ejercicio'))toast('Este dispositivo no permite compartir el archivo: usá Descargar')};
   if(bad)toast('Un audio no se pudo incluir (formato no compatible con este navegador)');
 }
 $('#bVid').onclick=openVideoDialog;
@@ -1913,12 +1933,24 @@ function audHTML(kind){
   if(kind==='scene')return`<b>${lbl}</b><button class="btn pri" data-au="recsc"${other?' disabled':''}>${ic('mic',14)}Grabar hablando sobre la escena</button><button class="btn" data-au="rec" data-k="scene"${other?' disabled':''}>${ic('mic',14)}Grabar sin mirar</button>`+`<button class="btn" data-au="up" data-k="${kind}">${ic('upload',14)}Subir audio</button>`;
   return`<b>${lbl}</b><button class="btn pri" data-au="rec" data-k="${kind}"${other?' disabled':''}>${ic('mic',14)}Grabar</button><button class="btn" data-au="up" data-k="${kind}">${ic('upload',14)}Subir audio</button>`;
 }
-function renderAudRow(){const r=$('#audRow');if(r)r.innerHTML=audHTML('scene')}
+const RATES=[1,1.5,2,3];
+function rateHTML(){
+  const sc=scene(),r=scRate(sc),n=natural(sc);
+  if(!(n>.2))return '';
+  return`<span class="ratebox"><span class="lab">Ritmo de la animación</span>${RATES.map(v=>`<button class="chip${r===v?' on':''}" data-rt="${v}">${v}×</button>`).join('')}<span class="info">${fmtT(n/r)} de movimiento${r!==1?' (en vez de '+fmtT(n)+')':''}</span></span>`;
+}
+function setRate(v){
+  const sc=scene();sc.rate=v===1?undefined:v;
+  if(S.narr){const st=startsOf(S.ex)[S.narr.i],W=timing(S.ex.scenes[S.narr.i]).W;S.narr.end=st+W-.002;if(S.pv&&S.pv.t>S.narr.end)S.pv.t=S.narr.end}
+  commit();renderAudRow();updRecBar(true);renderScenes();paint();
+}
+function renderAudRow(){const r=$('#audRow');if(r)r.innerHTML=audHTML('scene')+rateHTML()}
 function refreshAud(){renderAudRow();const g=$('#gAud');if(g)g.innerHTML=audHTML('global')}
 function updRec(){const t=S.rec?(performance.now()-S.rec.t0)/1000:0;$$('.recT').forEach(el=>{el.textContent=fmtT(t)})}
 $('#recbar').addEventListener('click',e=>{audAction(e)});
 function audAction(e){
-  const b=e.target.closest('[data-au]');if(!b)return false;const a=b.dataset.au,k=b.dataset.k;
+  const b=e.target.closest('[data-au],[data-rt]');if(!b)return false;const a=b.dataset.au,k=b.dataset.k;
+  const rt=b.dataset.rt;if(rt){setRate(+rt);return true}
   if(a==='rec')recStart(k);
   else if(a==='recsc')recStart('scene',true);
   else if(a==='again'){if(S.rec){S.narrDone=false;playScene(S.rec.si,true);updRecBar(true)}}
@@ -1960,11 +1992,12 @@ function updRecBar(force){
   const b=$('#recbar');if(!b)return;
   if(!S.rec){b.hidden=true;b.innerHTML='';S.narrDone=false;S.recKey='';return}
   const narr=!!(S.rec.narr||(S.narr&&S.narr.rec));
-  const key=narr+'|'+S.narrDone;
+  const key=narr+'|'+S.narrDone+'|'+scRate(S.ex.scenes[S.rec.si]);
   if(!b.hidden&&S.recKey===key&&!force)return;
   S.recKey=key;b.hidden=false;
   const mid=narr?(S.narrDone?'la escena llegó al final · seguí explicando o repetila':'Escena '+((S.rec.si||0)+1)+': contá lo que va pasando'):'hablá y después tocá Detener';
   b.innerHTML=`<i class="rdot"></i><span>Grabando <b class="recT">0:00</b></span><small>${mid}</small>`
+    +(narr?`<span class="ratebox">${RATES.map(v=>`<button class="chip${scRate(S.ex.scenes[S.rec.si])===v?' on':''}" data-rt="${v}">${v}×</button>`).join('')}</span>`:'')
     +(narr?`<button class="btn" data-au="again">${ic('repeat',14)}Repetir escena</button>`:'')
     +`<button class="btn" data-au="stop" data-k="${S.rec.kind}">${ic('stop',14)}Detener</button>`;
 }
@@ -1987,8 +2020,8 @@ async function recStart(kind,withPlay){
   };
   if(withPlay){
     stopPreview();
-    {const nat=natural(S.ex.scenes[rec.si]);
-     toast(nat>0.2?`Mirá la cancha: la escena dura ${fmtT(nat)} de movimiento. Podés seguir hablando después, o repetirla`:'Esta escena no tiene movimientos todavía: se va a ver quieta mientras hablás');}
+    {const sc0=S.ex.scenes[rec.si],nat=natural(sc0)/scRate(sc0);
+     toast(nat>0.2?`Mirá la cancha: ${fmtT(nat)} de movimiento. Si te queda lento, subí el ritmo a 1.5× o 2× con los botones del cartel rojo`:'Esta escena no tiene movimientos todavía: se va a ver quieta mientras hablás');}
     await countdown(3);
     if(!S.rec)return;
   }
@@ -2278,6 +2311,22 @@ function pdfHTML(ex){
   <p class="mut" style="margin-top:18px">Hecho con Pizarra Fit</p>
   <script>window.onload=function(){setTimeout(function(){window.print()},350)}<\/script>
   </body></html>`;
+}
+function dlBlob(blob,name){
+  try{
+    const u=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=u;a.download=name;a.rel='noopener';a.style.display='none';
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{try{a.remove();URL.revokeObjectURL(u)}catch(e){}},15000);
+    return true;
+  }catch(e){return false}
+}
+async function shareBlob(blob,name,title){
+  try{
+    const f=new File([blob],name,{type:blob.type||'video/mp4'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:title||name});return true}
+  }catch(e){}
+  return false;
 }
 function exportPDF(){
   stopPreview();
