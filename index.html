@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Pizarra Fit · Planificador de entrenamientos</title>
+<title>Deportac · Pizarra táctica y planificador</title>
 <meta name="theme-color" content="#2f7d3a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Pizarra Fit">
+<meta name="apple-mobile-web-app-title" content="Deportac">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -328,7 +328,7 @@ body.zen header{display:none}
 <body>
 <div id="app">
   <header>
-    <div class="brand"><span class="logo"></span>PIZARRA<em>FIT</em></div>
+    <div class="brand"><span class="logo"></span>DEPOR<em>TAC</em></div>
     <nav id="nav">
       <button data-v="board" class="on">Pizarra</button>
       <button data-v="lib">Biblioteca</button>
@@ -347,8 +347,8 @@ body.zen header{display:none}
       <button class="btn icon" id="bRedo" title="Rehacer" aria-label="Rehacer"></button>
       <button class="btn" id="bDet"><span data-ic="sliders"></span><span class="lbl-t">Detalles</span></button>
       <button class="btn" id="bImg"><span data-ic="img"></span><span class="lbl-t">Imagen</span></button>
-      <button class="btn" id="bVid"><span data-ic="film"></span><span class="lbl-t">Video</span></button>
-      <button class="btn" id="bPdf"><span data-ic="doc"></span><span class="lbl-t">PDF</span></button>
+      <button class="btn" id="bVid"><span data-ic="download"></span><span class="lbl-t">Descargar video</span></button>
+      <button class="btn" id="bPdf"><span data-ic="doc"></span><span class="lbl-t">Descargar PDF</span></button>
       <button class="btn" id="bStats"><span data-ic="chart"></span><span class="lbl-t">Estadísticas</span></button>
       <button class="btn icon" id="bTools" title="Dónde van las herramientas" aria-label="Cambiar herramientas de lugar"><span data-ic="sliders"></span></button>
       <button class="btn icon" id="bZen" title="Cancha grande (ocultar todo)" aria-label="Cancha grande"><span data-ic="expand"></span></button>
@@ -1658,7 +1658,7 @@ function drawVideoBar(g,W,bh,BAR,ex,fr,el,INTRO,T,total){
   g.textBaseline='top';g.textAlign='left';g.fillStyle='#fff';g.font=`800 36px ${FONT}`;g.fillText(ex.name||'Ejercicio',28,bh+12);
   const cap=ex.scenes[fr.i].cap||'';g.fillStyle='#a8bcaf';g.font=`600 24px ${FONT}`;g.fillText(cap.length>70?cap.slice(0,68)+'…':cap,28,bh+56);
   g.textAlign='right';g.fillStyle='#fff';g.font=`800 32px ${FONT}`;g.fillText(`Escena ${fr.i+1}/${ex.scenes.length}`,W-28,bh+12);
-  g.fillStyle='#8ea398';g.font=`700 22px ${FONT}`;g.fillText('PIZARRA FIT',W-28,bh+52);
+  g.fillStyle='#8ea398';g.font=`700 22px ${FONT}`;g.fillText('DEPORTAC',W-28,bh+52);
   g.fillStyle='#7ea2ff';g.fillRect(0,bh+BAR-6,W*(total?T/total:0),6);
   if(el<INTRO){
     const a=el<1.2?1:Math.max(0,(INTRO-el)/.6);
@@ -1672,14 +1672,14 @@ function openVideoDialog(){
   stopPreview();const ex=S.ex,n=ex.scenes.filter(x=>x.aud).length;
   S.vspd=S.vspd||S.speed||1;
   const est=v=>`El video va a durar unos ${fmtT(totalTime()/v+3)} y la grabación tarda lo mismo.`;
-  openModal('Video de la animación',`<div class="row" style="gap:8px;align-items:center;margin-bottom:8px"><b>Velocidad del video</b><select id="vSpd">${[.5,1,1.5,2,3,4,6,8,12,16].map(v=>`<option value="${v}"${v===S.vspd?' selected':''}>${v}×</option>`).join('')}</select><span class="muted" id="vEst">${est(S.vspd)}</span></div>
+  openModal('Descargar el video del ejercicio',`<div class="row" style="gap:8px;align-items:center;margin-bottom:8px"><b>Velocidad del video</b><select id="vSpd">${[.5,1,1.5,2,3,4,6,8,12,16].map(v=>`<option value="${v}"${v===S.vspd?' selected':''}>${v}×</option>`).join('')}</select><span class="muted" id="vEst">${est(S.vspd)}</span></div>
   <p class="muted" style="margin-top:0">Lleva el nombre del ejercicio y una barra con la escena. Si grabaste explicaciones, se escuchan; arriba de 4× el audio se mantiene en 4× y queda corrido.</p>
   <div class="audrow" id="gAud"></div>
   <p class="muted">Explicaciones por escena: <b>${n}</b> de ${ex.scenes.length}. Se graban en cada escena, en <b>Tiempos → Explicación de esta escena</b>. Cada escena dura lo que dure su audio.</p>
-  <div class="mrow"><button class="btn" id="vX">Cancelar</button><button class="btn pri" id="vGo">${ic('film')}Grabar video</button></div>`);
+  <div class="mrow"><button class="btn" id="vX">Cancelar</button><button class="btn pri" id="vGo">${ic('download')}Crear y descargar</button></div>`);
   $('#gAud').innerHTML=audHTML('global');
   $('#vSpd').onchange=e=>{S.vspd=+e.target.value;$('#vEst').textContent=est(S.vspd)};
-  const pb=document.createElement('button');pb.className='btn';pb.id='vPdf';pb.innerHTML=ic('doc')+'Hoja en PDF con los pasos';
+  const pb=document.createElement('button');pb.className='btn';pb.id='vPdf';pb.innerHTML=ic('doc')+'Descargar también la hoja en PDF con los pasos';
   pb.onclick=()=>{closeModal();exportPDF()};$('#mBody').appendChild(pb);
   $('#mBody').onclick=e=>{audAction(e)};
   $('#vX').onclick=closeModal;$('#vGo').onclick=()=>exportVideo();
@@ -1694,7 +1694,7 @@ async function exportVideo(){
   const board=document.createElement('canvas');board.width=W;board.height=bh;
   const out=document.createElement('canvas');out.width=W;out.height=H;const g=out.getContext('2d');
   let cancel=false;
-  openModal('Preparando video',`<p class="muted">Preparando audios…</p><div class="prog"><i id="pg"></i></div><div class="mrow"><button class="btn" id="vCancel">Cancelar</button></div>`);
+  openModal('Armando el video…',`<p class="muted">Preparando audios…</p><div class="prog"><i id="pg"></i></div><div class="mrow"><button class="btn" id="vCancel">Cancelar</button></div>`);
   $('#mBody').onclick=null;$('#vCancel').onclick=()=>{cancel=true};
   await audLoad(ids);
   const bufs=new Map();let bad=0;
@@ -1704,7 +1704,7 @@ async function exportVideo(){
   let dur=INTRO+total/spd+OUTRO;
   if(withAud&&ex.aud&&bufs.get(ex.aud.id))dur=Math.max(dur,INTRO+ex.aud.dur/spd+.8);
   if(cancel){closeModal();try{actx&&actx.close()}catch(err){}return}
-  $('#mTitle').textContent='Grabando video';
+  $('#mTitle').textContent='Armando el video…';
   const mimes=withAud?['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm']:['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
   const mime=mimes.find(m=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m))||'';
   let rec;
@@ -1735,7 +1735,7 @@ async function exportVideo(){
   const type=(rec.mimeType||mime||'video/webm').split(';')[0],blob=new Blob(chunks,{type}),url=URL.createObjectURL(blob),ext=type.includes('mp4')?'mp4':'webm';
   const nm=(ex.name||'ejercicio').replace(/[^\w\-]+/g,'_');
   const mb=(blob.size/1048576).toFixed(1);
-  openModal('Video listo',`<video class="prev" src="${url}" controls playsinline></video>
+  openModal('Video listo para guardar',`<video class="prev" src="${url}" controls playsinline></video>
   <p class="muted">${withAud?'Incluye tus audios. ':''}${ext.toUpperCase()} · ${mb} MB · ${fmtT(dur)}</p>
   <div class="mrow" style="flex-wrap:wrap;gap:8px">
     <button class="btn pri" id="vDl">${ic('download',16)}Descargar video</button>
@@ -2308,7 +2308,7 @@ function pdfHTML(ex){
   </style></head><body>
   <div class="head"><h1>${esc(ex.name||'Ejercicio sin nombre')}</h1><div class="mut">${esc(meta)}</div>${det}</div>
   ${scenes}${tbl}
-  <p class="mut" style="margin-top:18px">Hecho con Pizarra Fit</p>
+  <p class="mut" style="margin-top:18px">Hecho con Deportac</p>
   <script>window.onload=function(){setTimeout(function(){window.print()},350)}<\/script>
   </body></html>`;
 }
