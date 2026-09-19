@@ -943,9 +943,23 @@ function totalOf(ex){return ex.scenes.reduce((a,sc)=>a+timing(sc).W,0)}
 const totalTime=()=>totalOf(S.ex);
 function sceneAt(ex,T){const st=startsOf(ex);for(let k=0;k<ex.scenes.length;k++){if(T<st[k]+timing(ex.scenes[k]).W)return k}return ex.scenes.length-1}
 
+const FILL={loop:'Se repite',hold:'Queda quieta',slow:'Cámara lenta'};
+const scFill=sc=>(sc&&FILL[sc.fill])?sc.fill:'loop';
+function tauOf(sc,t,tm){
+  const nm=natural(sc);let tau=t*tm.scale;
+  if(nm<=0||tau<=nm)return tau;
+  const f=scFill(sc);
+  if(f==='hold')return tau;
+  if(f==='slow')return nm*Math.min(1,t/Math.max(.1,tm.W-.15));
+  const Wt=tm.W*tm.scale,tail=Math.min(.9,tm.W*.12)*tm.scale;
+  if(tau>=Wt-tail)return nm;
+  const cyc=nm+.9,u=(tau-nm)%cyc;
+  if(tau-u+cyc>Wt-tail)return nm;
+  return u<.9?nm:u-.9;
+}
 function sceneFrame(i,t,play,ex){
   ex=ex||S.ex;
-  const sc=ex.scenes[i],tm=timing(sc),tau=t*tm.scale,next=ex.scenes[i+1],prev=ex.scenes[i-1],pos=new Map(),routes=[];
+  const sc=ex.scenes[i],tm=timing(sc),tau=tauOf(sc,t,tm),next=ex.scenes[i+1],prev=ex.scenes[i-1],pos=new Map(),routes=[];
   sc.els.forEach(e=>{
     const r=sc.routes[e.id];let p={x:e.x,y:e.y,d:0,seg:0};
     if(r&&r.segs.length){const inf=routeInfo(e,r),lt=tau-(r.d||0);if(lt>0)p=posOnRoute(inf,lt);routes.push({e,r,inf,d:p.d,seg:p.seg})}
@@ -1937,7 +1951,10 @@ const RATES=[1,1.5,2,3];
 function rateHTML(){
   const sc=scene(),r=scRate(sc),n=natural(sc);
   if(!(n>.2))return '';
-  return`<span class="ratebox"><span class="lab">Ritmo de la animación</span>${RATES.map(v=>`<button class="chip${r===v?' on':''}" data-rt="${v}">${v}×</button>`).join('')}<span class="info">${fmtT(n/r)} de movimiento${r!==1?' (en vez de '+fmtT(n)+')':''}</span></span>`;
+  const tm=timing(sc),sobra=tm.W-n/r;
+  let h=`<span class="ratebox"><span class="lab">Ritmo de la animación</span>${RATES.map(v=>`<button class="chip${r===v?' on':''}" data-rt="${v}">${v}×</button>`).join('')}<span class="info">${fmtT(n/r)} de movimiento${r!==1?' (en vez de '+fmtT(n)+')':''}</span></span>`;
+  if(sobra>1.2)h+=`<span class="ratebox"><span class="lab">Mientras seguís hablando (${fmtT(sobra)})</span>${Object.keys(FILL).map(k=>`<button class="chip${scFill(sc)===k?' on':''}" data-fl="${k}">${FILL[k]}</button>`).join('')}</span>`;
+  return h;
 }
 function setRate(v){
   const sc=scene();sc.rate=v===1?undefined:v;
@@ -1949,8 +1966,9 @@ function refreshAud(){renderAudRow();const g=$('#gAud');if(g)g.innerHTML=audHTML
 function updRec(){const t=S.rec?(performance.now()-S.rec.t0)/1000:0;$$('.recT').forEach(el=>{el.textContent=fmtT(t)})}
 $('#recbar').addEventListener('click',e=>{audAction(e)});
 function audAction(e){
-  const b=e.target.closest('[data-au],[data-rt]');if(!b)return false;const a=b.dataset.au,k=b.dataset.k;
+  const b=e.target.closest('[data-au],[data-rt],[data-fl]');if(!b)return false;const a=b.dataset.au,k=b.dataset.k;
   const rt=b.dataset.rt;if(rt){setRate(+rt);return true}
+  const fl=b.dataset.fl;if(fl){const sc=scene();sc.fill=fl;commit();renderAudRow();renderScenes();paint();toast(fl==='loop'?'La jugada se repite mientras seguís explicando':fl==='slow'?'El movimiento se estira para durar toda tu explicación':'La escena queda quieta en el final mientras explicás');return true}
   if(a==='rec')recStart(k);
   else if(a==='recsc')recStart('scene',true);
   else if(a==='again'){if(S.rec){S.narrDone=false;playScene(S.rec.si,true);updRecBar(true)}}
@@ -1974,7 +1992,7 @@ async function attachAudio(kind,blob,dur,si){
   if(!saved){toast('Audio cargado, pero este navegador no lo puede guardar: se pierde al cerrar');return}
   if(kind==='scene'){
     const sc=S.ex.scenes[si==null?S.cur:si],nat=natural(sc),d=tgt.aud.dur;
-    toast(d>nat+.3?`Listo: la escena dura ${fmtT(d+.4)} y queda quieta al final mientras seguís explicando`:`Listo: ${fmtT(d)} de explicación sobre la escena`);
+    toast(d>nat+.3?`Listo: ${fmtT(d)} de explicación. Como sobra tiempo, la jugada se repite mientras hablás (podés cambiarlo abajo)`:`Listo: ${fmtT(d)} de explicación sobre la escena`);
   }else toast('Audio general guardado');
 }
 function countdown(n){
