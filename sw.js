@@ -1,6 +1,6 @@
 /* Deportac · uso sin conexión. Guarda la app en el dispositivo y la actualiza en segundo plano.
    Si publicás una versión nueva, cambiá el número de CACHE para forzar la actualización. */
-const CACHE = 'deportac-v16';
+const CACHE = 'deportac-v17';
 const FILES = ['./', './index.html', './config.js', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
