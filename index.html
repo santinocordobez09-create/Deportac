@@ -73,10 +73,22 @@ input[type=range]{padding:0}
 #bar>*{flex:none}
 #bar #exName{flex:1 1 180px;min-width:120px;font-weight:600}
 #bar #fieldSel{flex:0 1 190px;min-width:110px}
+#ap{border-top:1px solid var(--line);padding:8px 2px 4px}
+#ap .aphead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+#ap .aphead b{font:800 17px 'Barlow Condensed',sans-serif;letter-spacing:.03em}
+#ap .audrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#ap .bigrec{font:800 17px 'Barlow Condensed',sans-serif;letter-spacing:.03em;padding:10px 18px;min-height:46px;background:#b91c1c;border-color:#b91c1c;color:#fff}
+#ap .bigrec:hover{background:#991b1b}
+#ap .ratebox{margin-left:0;padding-left:0;border-left:0;width:100%}
+#ap .hint2{width:100%;font-size:12.5px;color:var(--muted)}
+.free #bNarr{display:none!important}
+body.recbig header,body.recbig #pal,body.recbig #bar,body.recbig #tl,body.recbig #freebar{display:none!important}
+body.recbig #v-board{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr)!important;grid-template-areas:"stage"!important}
+body.recbig #recbar{top:14px;font-size:16px;padding:8px 10px 8px 16px}
 #freebar{display:none;gap:10px;align-items:center;padding:7px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
 #freebar b{font-family:'Barlow Condensed',sans-serif;font-size:17px;letter-spacing:.04em}
 .free #freebar{display:flex}
-.free #tl .tlc,.free #scenes,.free #tp,.free #bVid,.free #bStats{display:none!important}
+.free #tl .tlc,.free #scenes,.free #tp,.free #ap,.free #bVid,.free #bStats{display:none!important}
 #pal{grid-area:pal;overflow:auto;background:var(--panel);border-right:1px solid var(--line);padding:8px 8px 20px}
 body.toolsTop #v-board{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;grid-template-areas:"bar" "pal" "stage" "tl"}
 body.toolsTop #pal{display:block;border-right:0;border-bottom:1px solid var(--line);padding:0;overflow:visible}
@@ -374,7 +386,8 @@ body.zen header{display:none}
         <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="Línea de tiempo">
         <button class="btn icon" id="loopB" title="Repetir" aria-label="Repetir"></button>
         <select id="spd" aria-label="Velocidad"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option><option value="3">3×</option><option value="4">4×</option><option value="6">6×</option><option value="8">8×</option><option value="12">12×</option><option value="16">16×</option></select>
-        <button class="btn" id="bTime" title="Tiempos y duración de la escena"><span data-ic="clock"></span>Tiempos</button>
+        <button class="btn pri" id="bNarr" title="Grabar tu explicación sobre esta escena"><span data-ic="mic"></span>Explicar con audio</button>
+        <button class="btn" id="bTime" title="Cuándo sale cada jugador y cuánto dura la escena"><span data-ic="clock"></span>Salidas y duración</button>
         <button class="btn on" id="bDist" title="Mostrar metros" aria-label="Mostrar metros"><span data-ic="ruler"></span></button>
         <button class="btn" id="bRot" hidden><span data-ic="repeat"></span>Rotar estaciones</button>
       </div>
@@ -384,8 +397,11 @@ body.zen header{display:none}
           <label>Descripción de la escena<input id="scCap" maxlength="110" placeholder="Ej: El 9 se desmarca y el 10 lo habilita"></label>
           <div class="dur"><button class="btn icon" id="durM" aria-label="Menos tiempo">−</button><b id="durV">Auto</b><button class="btn icon" id="durP" aria-label="Más tiempo">+</button><button class="btn" id="durA">Auto</button></div>
         </div>
-        <div id="audRow" class="audrow"></div>
         <div id="tbars"></div>
+      </div>
+      <div id="ap" hidden>
+        <div class="aphead"><b id="apTitle">Explicación de la escena 1</b><button class="btn icon" id="apX" aria-label="Cerrar">✕</button></div>
+        <div id="audRow" class="audrow"></div>
       </div>
       <div id="scenes"></div>
       <button class="btn icon" id="bScFold" title="Mostrar u ocultar las escenas" aria-label="Escenas"><span data-ic="down"></span></button>
@@ -1104,7 +1120,7 @@ function renderRadial(){
   requestAnimationFrame(()=>requestAnimationFrame(()=>r.classList.add('open')));
 }
 $('#topnote').addEventListener('click',e=>{if(e.target.closest('[data-a="actoff"]'))setAct('move')});
-window.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('zen'))setZen(false)});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('zen'))setZen(false);if(e.key==='Escape'&&!S.rec&&document.body.classList.contains('recbig')){pause();document.body.classList.remove('recbig');fit()}});
 function setAct(a){S.act=a;if(a!=='move'){S.menu=false;S.card=false}renderRadial();renderCard();paint()}
 $('#radial').addEventListener('click',e=>{
   const b=e.target.closest('.rb');if(!b)return;const o=selObj(),a=b.dataset.a;if(!o)return;
@@ -1273,6 +1289,8 @@ function snapPt(p,exId){
   return best?{x:best.x,y:best.y,id:best.id}:{x:p.x,y:p.y,id:null};
 }
 stage.addEventListener('pointerdown',ev=>{
+  if(S.rec&&S.rec.narr){ev.preventDefault();return}
+  if(document.body.classList.contains('recbig')){pause();stopPreview();document.body.classList.remove('recbig');fit();return}
   if(S.pv)stopPreview();
   const p=wp(ev),sc=scene(),t=S.tool;
   try{stage.setPointerCapture(ev.pointerId)}catch(e){}
@@ -1456,7 +1474,7 @@ function tick(ts){
   if(S.narr){
     if(S.pv.t>=S.narr.end){
       S.pv.t=S.narr.end;S.playing=false;setPlayIcon();
-      if(!S.narr.rec){stopAud();S.narr=null}
+      if(!S.narr.rec){stopAud();S.narr=null;setTimeout(()=>{if(!S.rec&&!S.playing&&document.body.classList.contains('recbig')){document.body.classList.remove('recbig');fit()}},900)}
       else{S.narrDone=true;updRecBar(true)}
     }
     $('#scrub').value=Math.round(S.pv.t/tot*1000);
@@ -1536,7 +1554,15 @@ $('#scenes').addEventListener('click',e=>{
   const d=e.target.closest('.sc[data-i]');if(d)goScene(+d.dataset.i);
 });
 $('#scenes').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('.sc[data-i]')){e.preventDefault();goScene(+e.target.dataset.i)}});
-$('#bTime').onclick=()=>{const p=$('#tp');p.hidden=!p.hidden;$('#bTime').classList.toggle('on',!p.hidden);renderTiming()};
+$('#bTime').onclick=()=>{const p=$('#tp');p.hidden=!p.hidden;$('#bTime').classList.toggle('on',!p.hidden);if(!p.hidden){$('#ap').hidden=true;$('#bNarr').classList.remove('on')}renderTiming()};
+function openNarr(show){
+  const p=$('#ap');p.hidden=show===false?true:(show===true?false:!p.hidden);
+  $('#bNarr').classList.toggle('on',!p.hidden);
+  if(!p.hidden){$('#tp').hidden=true;$('#bTime').classList.remove('on');$('#apTitle').textContent='Explicación de la escena '+(S.cur+1);refreshAud()}
+  fit();
+}
+$('#bNarr').onclick=()=>openNarr();
+$('#apX').onclick=()=>openNarr(false);
 
 function renderTiming(){
   if($('#tp').hidden)return;
@@ -1719,12 +1745,14 @@ async function exportVideo(){
   if(withAud&&ex.aud&&bufs.get(ex.aud.id))dur=Math.max(dur,INTRO+ex.aud.dur/spd+.8);
   if(cancel){closeModal();try{actx&&actx.close()}catch(err){}return}
   $('#mTitle').textContent='Armando el video…';
-  const mimes=withAud?['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm']:['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+  const mimes=withAud
+    ?['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1.4D401F,mp4a.40.2','video/mp4;codecs=avc1,mp4a.40.2','video/mp4;codecs=avc3.42E01E,mp4a.40.2','video/mp4;codecs=avc1.42E01E,opus','video/mp4;codecs=avc1,opus','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm']
+    :['video/mp4;codecs=avc1.42E01E','video/mp4;codecs=avc1.4D401F','video/mp4;codecs=avc1','video/mp4;codecs=avc3.42E01E','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
   const mime=mimes.find(m=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m))||'';
   let rec;
   try{
     const cs=out.captureStream(30),stream=new MediaStream([...cs.getVideoTracks(),...(withAud?dest.stream.getAudioTracks():[])]);
-    rec=new MediaRecorder(stream,mime?{mimeType:mime,videoBitsPerSecond:6000000}:undefined);
+    rec=new MediaRecorder(stream,mime?{mimeType:mime,videoBitsPerSecond:2500000,audioBitsPerSecond:96000}:undefined);
   }catch(err){closeModal();toast('No se pudo iniciar la grabación en este navegador');return}
   const chunks=[];rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
   const stopped=new Promise(r=>{rec.onstop=r});
@@ -1756,7 +1784,9 @@ async function exportVideo(){
     <button class="btn" id="vShare" hidden>${ic('upload',16)}Compartir</button>
     <a class="btn" id="vOpen" href="${url}" target="_blank" rel="noopener">Abrir en otra pestaña</a>
   </div>
-  <p class="muted" id="vHelp" style="margin-bottom:0">Si no lo encontrás, fijate en la carpeta Descargas. En el celular también podés mantener presionado el video de arriba para guardarlo.</p>`);
+  ${ext==='webm'?`<div class="card" style="border-left:4px solid #f59e0b;padding:8px 12px;margin:8px 0"><b>Ojo con WhatsApp:</b> este navegador genera el video en formato WebM, que WhatsApp no reproduce como video. Mandalo como <b>Documento</b> (clip → Documento) o generalo desde Chrome o Edge actualizados, que lo hacen en MP4.</div>`:''}
+  ${blob.size>60*1048576?`<div class="card" style="border-left:4px solid #f59e0b;padding:8px 12px;margin:8px 0"><b>Pesa ${mb} MB:</b> WhatsApp puede rechazarlo como video. Generalo a más velocidad, dividilo en dos ejercicios o mandalo como Documento.</div>`:''}
+  <p class="muted" id="vHelp" style="margin-bottom:0">${ext==='mp4'?'Formato MP4: se manda por WhatsApp como cualquier video. ':''}Si no lo encontrás, fijate en la carpeta Descargas. En el celular también podés mantener presionado el video de arriba para guardarlo.</p>`);
   const shBtn=$('#vShare');
   try{const f=new File([blob],`${nm}.${ext}`,{type:type});if(navigator.canShare&&navigator.canShare({files:[f]}))shBtn.hidden=false}catch(e){}
   $('#vDl').onclick=()=>{
@@ -1943,8 +1973,9 @@ function audHTML(kind){
   const mine=!!(S.rec&&S.rec.kind===kind&&(kind==='global'||S.rec.si===S.cur)),other=!!(S.rec&&!mine);
   if(mine)return`<span class="rec"><i class="rdot"></i> Grabando <b class="recT">0:00</b></span><button class="btn danger" data-au="stop" data-k="${kind}">${ic('stop',14)}Detener</button>`;
   const lbl=kind==='global'?'Audio general del video':'Explicación de esta escena';
-  if(a)return`<b>${ic('volume',16)} ${lbl} · ${fmtT(a.dur)}</b>${kind==='scene'?`<button class="btn pri" data-au="playsc">${ic('play',14)}Ver la escena con tu voz</button>`:''}<button class="btn" data-au="play" data-k="${kind}">${ic('play',14)}Escuchar</button><button class="btn" data-au="${kind==='scene'?'recsc':'rec'}" data-k="${kind}"${other?' disabled':''}>${ic('mic',14)}Regrabar${kind==='scene'?' narrando':''}</button><button class="btn" data-au="up" data-k="${kind}">${ic('upload',14)}Cambiar</button><button class="btn danger" data-au="del" data-k="${kind}" aria-label="Quitar audio">${ic('trash',14)}</button>`;
-  if(kind==='scene')return`<b>${lbl}</b><button class="btn pri" data-au="recsc"${other?' disabled':''}>${ic('mic',14)}Grabar hablando sobre la escena</button><button class="btn" data-au="rec" data-k="scene"${other?' disabled':''}>${ic('mic',14)}Grabar sin mirar</button>`+`<button class="btn" data-au="up" data-k="${kind}">${ic('upload',14)}Subir audio</button>`;
+  if(a&&kind==='scene')return`<b>${ic('volume',16)} Tu explicación · ${fmtT(a.dur)}</b><button class="btn pri" data-au="playsc">${ic('play',14)}Ver la escena con mi voz</button><button class="btn" data-au="recsc"${other?' disabled':''}>${ic('mic',14)}Volver a grabar</button><button class="btn danger" data-au="del" data-k="scene" aria-label="Borrar audio">${ic('trash',14)}Borrar</button>`;
+  if(a)return`<b>${ic('volume',16)} ${lbl} · ${fmtT(a.dur)}</b><button class="btn" data-au="play" data-k="${kind}">${ic('play',14)}Escuchar</button><button class="btn" data-au="rec" data-k="${kind}"${other?' disabled':''}>${ic('mic',14)}Regrabar</button><button class="btn" data-au="up" data-k="${kind}">${ic('upload',14)}Cambiar</button><button class="btn danger" data-au="del" data-k="${kind}" aria-label="Quitar audio">${ic('trash',14)}</button>`;
+  if(kind==='scene')return`<button class="btn bigrec" data-au="recsc"${other?' disabled':''}>${ic('mic',18)}Grabar mi explicación</button><button class="btn" data-au="up" data-k="${kind}">${ic('upload',14)}Subir un audio</button><span class="hint2">Al tocar grabar, la cancha se pone grande, cuenta 3·2·1 y la escena empieza a moverse mientras hablás. Cuando termines, tocá Detener.</span>`;
   return`<b>${lbl}</b><button class="btn pri" data-au="rec" data-k="${kind}"${other?' disabled':''}>${ic('mic',14)}Grabar</button><button class="btn" data-au="up" data-k="${kind}">${ic('upload',14)}Subir audio</button>`;
 }
 const RATES=[1,1.5,2,3];
@@ -1961,7 +1992,7 @@ function setRate(v){
   if(S.narr){const st=startsOf(S.ex)[S.narr.i],W=timing(S.ex.scenes[S.narr.i]).W;S.narr.end=st+W-.002;if(S.pv&&S.pv.t>S.narr.end)S.pv.t=S.narr.end}
   commit();renderAudRow();updRecBar(true);renderScenes();paint();
 }
-function renderAudRow(){const r=$('#audRow');if(r)r.innerHTML=audHTML('scene')+rateHTML()}
+function renderAudRow(){const r=$('#audRow');if(r)r.innerHTML=audHTML('scene')+rateHTML();const t=$('#apTitle');if(t)t.textContent='Explicación de la escena '+(S.cur+1)}
 function refreshAud(){renderAudRow();const g=$('#gAud');if(g)g.innerHTML=audHTML('global')}
 function updRec(){const t=S.rec?(performance.now()-S.rec.t0)/1000:0;$$('.recT').forEach(el=>{el.textContent=fmtT(t)})}
 $('#recbar').addEventListener('click',e=>{audAction(e)});
@@ -1972,7 +2003,7 @@ function audAction(e){
   if(a==='rec')recStart(k);
   else if(a==='recsc')recStart('scene',true);
   else if(a==='again'){if(S.rec){S.narrDone=false;playScene(S.rec.si,true);updRecBar(true)}}
-  else if(a==='playsc'){const i=S.cur;stopPreview();S.cur=i;playScene(i,false)}
+  else if(a==='playsc'){const i=S.cur;stopPreview();S.cur=i;document.body.classList.add('recbig');fit();playScene(i,false);toast('Mirando la escena con tu voz · tocá la cancha o Escape para salir')}
   else if(a==='stop')recStop();
   else if(a==='up'){S.upKind=k;S.upScene=S.cur;$('#audFile').value='';$('#audFile').click()}
   else if(a==='del'){const tgt=k==='global'?S.ex:scene();delete tgt.aud;commit();refreshAud()}
@@ -2031,20 +2062,21 @@ async function recStart(kind,withPlay){
   mr.onstop=async()=>{
     stream.getTracks().forEach(t=>t.stop());clearInterval(rec.tm);S.rec=null;
     if(S.narr&&S.narr.rec){S.narr=null;S.playing=false;setPlayIcon();stopPreview()}
+    if(document.body.classList.contains('recbig')){document.body.classList.remove('recbig');fit()}
     updRecBar();
     const type=(mr.mimeType||mime||'audio/webm').split(';')[0],blob=new Blob(chunks,{type}),timer=(performance.now()-rec.t0)/1000;
     let dur=await audDuration(blob);if(!dur||!isFinite(dur))dur=timer;
     await attachAudio(kind,blob,dur,rec.si);
   };
   if(withPlay){
-    stopPreview();
+    stopPreview();document.body.classList.add('recbig');fit();
     {const sc0=S.ex.scenes[rec.si],nat=natural(sc0)/scRate(sc0);
      toast(nat>0.2?`Mirá la cancha: ${fmtT(nat)} de movimiento. Si te queda lento, subí el ritmo a 1.5× o 2× con los botones del cartel rojo`:'Esta escena no tiene movimientos todavía: se va a ver quieta mientras hablás');}
     await countdown(3);
     if(!S.rec)return;
   }
   mr.start();rec.t0=performance.now();
-  if(withPlay){try{playScene(rec.si,true)}catch(e){}}
+  if(withPlay){document.body.classList.add('recbig');fit();try{playScene(rec.si,true)}catch(e){}}
   rec.tm=setInterval(()=>{if((performance.now()-rec.t0)/1000>=180)recStop();updRec();updRecBar()},250);
   refreshAud();updRecBar();
   if(withPlay){
@@ -2054,6 +2086,7 @@ async function recStart(kind,withPlay){
 }
 function recStop(){if(S.rec&&S.rec.mr.state!=='inactive')S.rec.mr.stop()}
 $('#tp').addEventListener('click',e=>{audAction(e)});
+$('#ap').addEventListener('click',e=>{audAction(e)});
 $('#audFile').addEventListener('change',async e=>{
   const f=e.target.files[0];if(!f)return;
   if(f.size>8e6){toast('El audio es muy pesado (máximo 8 MB)');return}
