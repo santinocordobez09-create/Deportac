@@ -108,6 +108,10 @@ body.recbig #recbar{top:14px;font-size:16px;padding:8px 10px 8px 16px}
 #login .lgo{width:100%;justify-content:center;min-height:46px;font:800 18px 'Barlow Condensed',sans-serif;letter-spacing:.04em;margin-top:4px}
 #login .lguest{width:100%;justify-content:center;margin-top:8px}
 #login .lnote{font-size:12px;margin:14px 0 0;text-align:center}
+#login .lgadm{display:block;margin:14px auto 0;background:none;border:0;color:var(--muted);font:500 11.5px 'Barlow',sans-serif;opacity:.6;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+#login .lgadm:hover{opacity:1}
+#login.adm .lcard{border-color:rgba(245,158,11,.55);box-shadow:0 0 0 1px rgba(245,158,11,.25),0 24px 60px rgba(0,0,0,.45)}
+#login.adm #lgGuest,#login.adm #lgNote{display:none}
 #login .lerr{background:rgba(220,38,38,.15);border:1px solid rgba(220,38,38,.45);color:#fca5a5;border-radius:10px;padding:8px 10px;font-size:13px;margin-bottom:10px}
 #bAcct{gap:7px}
 .admnew{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px}
@@ -391,13 +395,14 @@ body.zen header{display:none}
   <div id="login" hidden>
     <div class="lcard">
       <div class="brand big"><span class="logo"></span>DEPOR<em>TAC</em></div>
-      <p class="muted" style="margin:6px 0 16px">Entrá con el usuario y la contraseña que te dieron.</p>
+      <p class="muted" id="lgMsg" style="margin:6px 0 16px">Entrá con el usuario y la contraseña que te dieron.</p>
       <label>Usuario<input id="lgUser" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="ej: juanperez"></label>
       <label>Contraseña<input id="lgPass" type="password" autocomplete="current-password" placeholder="••••••••"></label>
       <div id="lgErr" class="lerr" hidden></div>
       <button class="btn pri lgo" id="lgGo">Entrar</button>
       <button class="btn plain lguest" id="lgGuest">Seguir como invitado</button>
-      <p class="muted lnote">Como invitado todo queda solo en este dispositivo. Con cuenta, tus ejercicios te siguen a la compu, la tablet y el celular.</p>
+      <p class="muted lnote" id="lgNote">Como invitado todo queda solo en este dispositivo. Con cuenta, tus ejercicios te siguen a la compu, la tablet y el celular.</p>
+      <button class="lgadm" id="lgAdm" type="button">Acceso administrador</button>
     </div>
   </div>
 
@@ -2584,8 +2589,15 @@ function acctUI(){
   b.hidden=!CFG;$('#acctName').textContent=AUTH?(AUTH.name+(AUTH.admin?' · admin':'')):'Invitado';
   if(!AUTH)setCloud('');
 }
+function admMode(on){
+  S.admLogin=!!on;const l=$('#login');l.classList.toggle('adm',S.admLogin);
+  $('#lgMsg').textContent=S.admLogin?'Acceso de administrador: gestioná las cuentas de los profes.':'Entrá con el usuario y la contraseña que te dieron.';
+  $('#lgGo').textContent=S.admLogin?'Entrar como administrador':'Entrar';
+  $('#lgAdm').textContent=S.admLogin?'← Volver al inicio de sesión':'Acceso administrador';
+  $('#lgErr').hidden=true;
+}
 function showLogin(on){
-  const l=$('#login');l.hidden=!on;
+  const l=$('#login');l.hidden=!on;if(on)admMode(false);
   if(on){$('#lgErr').hidden=true;$('#lgPass').value='';setTimeout(()=>{try{$('#lgUser').focus()}catch(e){}},60)}
 }
 async function doLogin(){
@@ -2595,10 +2607,18 @@ async function doLogin(){
   if(navigator.onLine===false){err('Necesitás internet para entrar la primera vez');return}
   const b=$('#lgGo');b.disabled=true;b.textContent='Entrando…';
   let r;try{r=await authCall('token?grant_type=password',{email:toEmail(u),password:p})}catch(e){r={ok:false,status:0,j:{}}}
-  b.disabled=false;b.textContent='Entrar';
+  b.disabled=false;b.textContent=S.admLogin?'Entrar como administrador':'Entrar';
   if(!r.ok){err(r.status===0?'No hay conexión con el servidor':(r.status===400||r.status===401)?'Usuario o contraseña incorrectos':'No se pudo entrar ('+r.status+')');return}
   const guestLib=rawGet('pf.lib',[]).filter(x=>x&&!String(x.id).startsWith('demo-')),guestSess=rawGet('pf.sess',[]).filter(x=>x&&!String(x.id).startsWith('demo-'));
   keepAuth(r.j,u.includes('@')?userOf(u):u.toLowerCase());
+  const wantAdm=!!S.admLogin;
+  if(wantAdm){
+    const isA=await checkAdmin();
+    if(!isA){
+      try{await fetch(CFG.url+'/auth/v1/logout',{method:'POST',headers:{apikey:CFG.key,Authorization:'Bearer '+AUTH.at}})}catch(e){}
+      AUTH=null;rawSet('dt.auth',null);err('Esta cuenta no tiene permisos de administrador');return;
+    }
+  }
   const dc=await checkDevice(true);
   if(dc&&dc.ok===false){
     const devs=(dc.devices||[]).map(d=>'• '+(d.name||'Dispositivo')+' ('+fmtAgo(d.last_seen)+')').join('<br>');
@@ -2610,6 +2630,7 @@ async function doLogin(){
   rawSet('dt.guest',null);CL.meta=null;
   checkAdmin().then(acctUI);
   showLogin(false);acctUI();reloadData();
+  if(wantAdm){toast('Hola '+AUTH.name+': abriendo el panel');openAdmin();syncNow();return}
   toast('Hola '+AUTH.name+': trayendo tu biblioteca…');
   await syncNow();
   if(guestLib.length||guestSess.length){
@@ -2645,6 +2666,7 @@ function cloudInit(){
   if(!CFG)return false;
   $('#bAcct').onclick=openAcct;
   $('#lgGo').onclick=doLogin;
+  $('#lgAdm').onclick=()=>admMode(!S.admLogin);
   $('#lgPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
   $('#lgUser').addEventListener('keydown',e=>{if(e.key==='Enter')$('#lgPass').focus()});
   $('#lgGuest').onclick=()=>{rawSet('dt.guest',true);showLogin(false);acctUI();toast('Modo invitado: todo queda en este dispositivo')};
