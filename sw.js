@@ -1,7 +1,7 @@
-/* Pizarra Fit · uso sin conexión. Guarda la app en el dispositivo y la actualiza en segundo plano.
+/* Deportac · uso sin conexión. Guarda la app en el dispositivo y la actualiza en segundo plano.
    Si publicás una versión nueva, cambiá el número de CACHE para forzar la actualización. */
-const CACHE = 'deportac-v12';
-const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
+const CACHE = 'deportac-v13';
+const FILES = ['./', './index.html', './config.js', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
 });
