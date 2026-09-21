@@ -85,6 +85,18 @@ input[type=range]{padding:0}
 body.recbig header,body.recbig #pal,body.recbig #bar,body.recbig #tl,body.recbig #freebar{display:none!important}
 body.recbig #v-board{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr)!important;grid-template-areas:"stage"!important}
 body.recbig #recbar{top:14px;font-size:16px;padding:8px 10px 8px 16px}
+#login{position:fixed;inset:0;z-index:60;background:radial-gradient(ellipse at top,#1d3a26 0%,#0b120e 70%);display:flex;align-items:center;justify-content:center;padding:18px}
+#login .lcard{width:min(380px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px 24px 20px;box-shadow:0 24px 60px rgba(0,0,0,.45)}
+#login .brand.big{font-size:34px}
+#login label{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:13px;margin-bottom:12px}
+#login input{font-size:16px;padding:10px 12px}
+#login .lgo{width:100%;justify-content:center;min-height:46px;font:800 18px 'Barlow Condensed',sans-serif;letter-spacing:.04em;margin-top:4px}
+#login .lguest{width:100%;justify-content:center;margin-top:8px}
+#login .lnote{font-size:12px;margin:14px 0 0;text-align:center}
+#login .lerr{background:rgba(220,38,38,.15);border:1px solid rgba(220,38,38,.45);color:#fca5a5;border-radius:10px;padding:8px 10px;font-size:13px;margin-bottom:10px}
+#bAcct{gap:7px}
+#bAcct .cdot{width:9px;height:9px;border-radius:50%;background:#94a3b8;display:inline-block;flex:none}
+#bAcct.ok .cdot{background:#22c55e}#bAcct.sync .cdot{background:#f59e0b;animation:rp 1s infinite}#bAcct.err .cdot{background:#ef4444}#bAcct.off .cdot{background:#64748b}
 #freebar{display:none;gap:10px;align-items:center;padding:7px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
 #freebar b{font-family:'Barlow Condensed',sans-serif;font-size:17px;letter-spacing:.04em}
 .free #freebar{display:flex}
@@ -346,9 +358,22 @@ body.zen header{display:none}
       <button data-v="lib">Biblioteca</button>
       <button data-v="sess">Sesión</button>
     </nav>
+    <button class="btn" id="bAcct" hidden><i class="cdot"></i><span id="acctName">Invitado</span></button>
     <button class="btn" id="bInstall" hidden><span data-ic="download"></span>Instalar</button>
     <button class="btn icon" id="bTheme" title="Cambiar tema" aria-label="Cambiar tema"></button>
   </header>
+  <div id="login" hidden>
+    <div class="lcard">
+      <div class="brand big"><span class="logo"></span>DEPOR<em>TAC</em></div>
+      <p class="muted" style="margin:6px 0 16px">Entrá con el usuario y la contraseña que te dieron.</p>
+      <label>Usuario<input id="lgUser" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="ej: juanperez"></label>
+      <label>Contraseña<input id="lgPass" type="password" autocomplete="current-password" placeholder="••••••••"></label>
+      <div id="lgErr" class="lerr" hidden></div>
+      <button class="btn pri lgo" id="lgGo">Entrar</button>
+      <button class="btn plain lguest" id="lgGuest">Seguir como invitado</button>
+      <p class="muted lnote">Como invitado todo queda solo en este dispositivo. Con cuenta, tus ejercicios te siguen a la compu, la tablet y el celular.</p>
+    </div>
+  </div>
 
   <!-- PIZARRA -->
   <section id="v-board" class="view on">
@@ -438,6 +463,7 @@ body.zen header{display:none}
 <div id="toast" hidden></div>
 <div id="printSheet"></div>
 
+<script src="config.js" onerror="void 0"></script>
 <script>
 (function(){
 'use strict';
@@ -451,9 +477,17 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const fmtM=L=>(L<10?L.toFixed(1):Math.round(L))+' m';
 const fmtT=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+/* cada cuenta guarda su biblioteca aparte; el invitado usa las claves de siempre */
+const CFG=(window.DEPORTAC_CONFIG&&window.DEPORTAC_CONFIG.url&&window.DEPORTAC_CONFIG.key)?window.DEPORTAC_CONFIG:null;
+const rawGet=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}};
+const rawSet=(k,v)=>{try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
+let AUTH=CFG?rawGet('dt.auth',null):null;
+const NSK={'pf.lib':1,'pf.sess':1,'pf.draft':1};
+const nsKey=k=>(NSK[k]&&AUTH&&AUTH.uid)?'u.'+AUTH.uid+'.'+k:k;
 const store={
-  get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
-  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+  get(k,d){return rawGet(nsKey(k),d)},
+  set(k,v){const ok=rawSet(nsKey(k),v);if(ok&&AUTH&&(k==='pf.lib'||k==='pf.sess'))cloudDirty();return ok},
+  quiet(k,v){return rawSet(nsKey(k),v)}
 };
 const ICONS={
   undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
@@ -1949,12 +1983,15 @@ async function audPut(id,blob){
 }
 async function audLoad(ids){
   const need=ids.filter(id=>!AUD.mem.has(id));if(!need.length)return;
-  const db=await audDb();if(!db)return;
-  await Promise.all(need.map(id=>new Promise(res=>{try{const rq=db.transaction('a').objectStore('a').get(id);rq.onsuccess=()=>{if(rq.result)AUD.mem.set(id,{blob:rq.result,url:URL.createObjectURL(rq.result)});res()};rq.onerror=()=>res()}catch(e){res()}})));
+  const db=await audDb();
+  if(db)await Promise.all(need.map(id=>new Promise(res=>{try{const rq=db.transaction('a').objectStore('a').get(id);rq.onsuccess=()=>{if(rq.result)AUD.mem.set(id,{blob:rq.result,url:URL.createObjectURL(rq.result)});res()};rq.onerror=()=>res()}catch(e){res()}})));
+  const miss=need.filter(id=>!AUD.mem.has(id));
+  if(miss.length&&AUTH&&navigator.onLine!==false)for(const id of miss){try{const b=await cloudGetAudio(id);if(b)await audPut(id,b)}catch(e){}}
 }
 async function audGC(){
   const db=await audDb();if(!db)return;
   const keep=new Set();[S.ex].concat(S.lib).forEach(ex=>audIds(ex).forEach(i=>keep.add(i)));
+  try{for(let j=0;j<localStorage.length;j++){const k=localStorage.key(j);if(/(^|\.)pf\.(lib|draft)$/.test(k)){const v=rawGet(k,null);[].concat(v||[]).forEach(ex=>{if(ex&&ex.scenes)audIds(ex).forEach(i=>keep.add(i))})}}}catch(e){}
   const keys=await new Promise(res=>{try{const rq=db.transaction('a').objectStore('a').getAllKeys();rq.onsuccess=()=>res(rq.result);rq.onerror=()=>res([])}catch(e){res([])}});
   keys.forEach(k=>{if(!keep.has(k)){try{db.transaction('a','readwrite').objectStore('a').delete(k)}catch(e){}}});
 }
@@ -2390,6 +2427,212 @@ function exportPDF(){
   toast('Descargué la hoja del ejercicio: abrila y usá Imprimir → Guardar como PDF');
 }
 
+
+/* ============ cuentas y nube (Supabase) ============ */
+const CL={busy:false,again:false,t:null,state:'',meta:null};
+const toEmail=u=>{u=(u||'').trim().toLowerCase();return u.includes('@')?u:u.replace(/[^a-z0-9._-]/g,'')+'@deportac.app'};
+const userOf=email=>(email||'').replace(/@deportac\.app$/,'');
+function metaKey(){return 'u.'+AUTH.uid+'.dt.meta'}
+function meta(){if(!CL.meta||CL.meta.uid!==AUTH.uid){CL.meta=Object.assign({uid:AUTH.uid,lastPull:'1970-01-01T00:00:00Z',synced:{},upAud:{},pulled:false},rawGet(metaKey(),{}));CL.meta.uid=AUTH.uid}return CL.meta}
+function saveMeta(){if(AUTH)rawSet(metaKey(),CL.meta)}
+function hashStr(t){let h=5381;for(let i=0;i<t.length;i++)h=((h<<5)+h+t.charCodeAt(i))|0;return (h>>>0).toString(36)+'.'+t.length}
+function slim(x){const c=JSON.parse(JSON.stringify(x));delete c.thumb;return c}
+const itemHash=x=>hashStr(JSON.stringify(slim(x)));
+function setCloud(st,msg){
+  CL.state=st;const b=$('#bAcct');if(!b)return;
+  b.classList.remove('ok','sync','err','off');if(st)b.classList.add(st);
+  b.title=msg||{ok:'Todo guardado en tu cuenta',sync:'Sincronizando…',err:'No se pudo sincronizar: se reintenta solo',off:'Sin conexión: se guarda acá y se sube cuando vuelva internet'}[st]||'';
+}
+async function authCall(path,body){
+  const r=await fetch(CFG.url+'/auth/v1/'+path,{method:'POST',headers:{apikey:CFG.key,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  let j={};try{j=await r.json()}catch(e){}
+  return{ok:r.ok,status:r.status,j};
+}
+function keepAuth(j,name){
+  AUTH={at:j.access_token,rt:j.refresh_token,exp:Date.now()+((j.expires_in||3600)*1000),uid:j.user?j.user.id:AUTH&&AUTH.uid,name:name||(AUTH&&AUTH.name)||userOf(j.user&&j.user.email)};
+  rawSet('dt.auth',AUTH);
+}
+async function refreshTok(){
+  if(!AUTH||!AUTH.rt)return false;
+  const r=await authCall('token?grant_type=refresh_token',{refresh_token:AUTH.rt});
+  if(r.ok){keepAuth(r.j);return true}
+  if(r.status===400||r.status===401){toast('Tu sesión venció: volvé a entrar');cloudLogout(true);}
+  return false;
+}
+async function api(path,opt,retry){
+  opt=opt||{};
+  if(AUTH&&Date.now()>AUTH.exp-60000)await refreshTok();
+  if(!AUTH)throw new Error('sin sesión');
+  const h=Object.assign({apikey:CFG.key,Authorization:'Bearer '+AUTH.at},opt.headers||{});
+  const r=await fetch(CFG.url+path,Object.assign({},opt,{headers:h}));
+  if(r.status===401&&retry!==false){if(await refreshTok())return api(path,opt,false)}
+  return r;
+}
+async function cloudGetAudio(id){
+  if(!AUTH)return null;
+  const r=await api('/storage/v1/object/authenticated/audios/'+AUTH.uid+'/'+encodeURIComponent(id));
+  return r.ok?await r.blob():null;
+}
+async function cloudPutAudio(id){
+  await audLoad([id]);const info=AUD.mem.get(id);if(!info)return true;
+  const r=await api('/storage/v1/object/audios/'+AUTH.uid+'/'+encodeURIComponent(id),{method:'POST',headers:{'x-upsert':'true','Content-Type':info.blob.type||'audio/webm'},body:info.blob});
+  return r.ok;
+}
+async function cloudPush(){
+  const m=meta(),rows=[],seen=new Set();
+  const all=S.lib.map(x=>['ex',x]).concat(S.sess.map(x=>['ses',x]));
+  for(const [kind,x] of all){
+    if(!x||!x.id)continue;const key=kind+':'+x.id;seen.add(key);
+    const data=slim(x),h=hashStr(JSON.stringify(data));
+    if(m.synced[key]!==h)rows.push({row:{user_id:AUTH.uid,id:x.id,kind,data,deleted:false},key,h,data});
+  }
+  Object.keys(m.synced).forEach(key=>{if(!seen.has(key)&&m.synced[key]!=='DEL'){const [kind,id]=[key.slice(0,key.indexOf(':')),key.slice(key.indexOf(':')+1)];rows.push({row:{user_id:AUTH.uid,id,kind,data:null,deleted:true},key,h:'DEL'})}});
+  if(!rows.length)return 0;
+  for(const it of rows){if(it.row.kind==='ex'&&it.data)for(const aid of audIds(it.data)){if(!m.upAud[aid]){if(await cloudPutAudio(aid)){m.upAud[aid]=1;saveMeta()}}}}
+  for(let i=0;i<rows.length;i+=40){
+    const chunk=rows.slice(i,i+40);
+    const r=await api('/rest/v1/items?on_conflict=user_id,id',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(chunk.map(c=>c.row))});
+    if(!r.ok)throw new Error('push '+r.status);
+    chunk.forEach(c=>{m.synced[c.key]=c.h});saveMeta();
+  }
+  return rows.length;
+}
+async function cloudPull(){
+  const m=meta();let changed=0,more=true,guard=0;
+  while(more&&guard++<20){
+    const r=await api('/rest/v1/items?select=id,kind,data,deleted,updated_at&updated_at=gt.'+encodeURIComponent(m.lastPull)+'&order=updated_at.asc&limit=500');
+    if(!r.ok)throw new Error('pull '+r.status);
+    const rows=await r.json();more=rows.length===500;
+    for(const row of rows){
+      const key=row.kind+':'+row.id,arr=row.kind==='ex'?S.lib:S.sess,i=arr.findIndex(v=>v.id===row.id),loc=i>=0?arr[i]:null;
+      const pending=loc&&m.synced[key]!==itemHash(loc);
+      if(row.deleted){
+        if(loc&&!pending){arr.splice(i,1);changed++}
+        if(!pending)m.synced[key]='DEL';
+      }else if(row.data){
+        const d=row.data;
+        if(!loc||!pending||(d.updated||0)>=(loc.updated||0)){
+          const h=hashStr(JSON.stringify(d));
+          let nx=d;if(row.kind==='ex'){nx=norm(JSON.parse(JSON.stringify(d)));try{nx.thumb=thumbOf(nx,0)}catch(e){}}
+          if(i>=0)arr[i]=nx;else arr.push(nx);
+          m.synced[key]=h;changed++;
+        }
+      }
+      if(row.updated_at>m.lastPull)m.lastPull=row.updated_at;
+    }
+  }
+  m.pulled=true;saveMeta();
+  if(changed){store.quiet('pf.lib',S.lib);store.quiet('pf.sess',S.sess);if(S.view==='lib')renderLib();if(S.view==='sess')renderSess()}
+  return changed;
+}
+async function syncNow(manual){
+  if(!AUTH||!CFG)return;
+  if(navigator.onLine===false){setCloud('off');return}
+  if(CL.busy){CL.again=true;return}
+  CL.busy=true;setCloud('sync');
+  try{
+    const up=await cloudPush();
+    const down=await cloudPull();
+    if(!S.lib.length&&!meta().seeded){meta().seeded=true;saveMeta();addExamples();await cloudPush()}
+    setCloud('ok');
+    if(manual)toast(up||down?`Listo: ${up} subidos, ${down} actualizados`:'Todo al día');
+  }catch(e){setCloud(navigator.onLine===false?'off':'err');if(manual)toast('No se pudo sincronizar. Revisá la conexión')}
+  CL.busy=false;
+  if(CL.again){CL.again=false;setTimeout(()=>syncNow(),300)}
+}
+function cloudDirty(){if(!AUTH)return;setCloud('sync');clearTimeout(CL.t);CL.t=setTimeout(()=>syncNow(),1500)}
+function reloadData(){
+  S.lib=store.get('pf.lib',[]).map(norm);S.sess=store.get('pf.sess',[]);
+  const d=store.get('pf.draft',null);
+  loadEx(norm((d&&d.scenes&&d.scenes.length)?d:newEx()));
+  if(S.view==='lib')renderLib();if(S.view==='sess')renderSess();
+}
+function acctUI(){
+  const b=$('#bAcct');if(!b)return;
+  b.hidden=!CFG;$('#acctName').textContent=AUTH?AUTH.name:'Invitado';
+  if(!AUTH)setCloud('');
+}
+function showLogin(on){
+  const l=$('#login');l.hidden=!on;
+  if(on){$('#lgErr').hidden=true;$('#lgPass').value='';setTimeout(()=>{try{$('#lgUser').focus()}catch(e){}},60)}
+}
+async function doLogin(){
+  const u=$('#lgUser').value.trim(),p=$('#lgPass').value;
+  const err=t=>{const e=$('#lgErr');e.textContent=t;e.hidden=false};
+  if(!u||!p){err('Completá usuario y contraseña');return}
+  if(navigator.onLine===false){err('Necesitás internet para entrar la primera vez');return}
+  const b=$('#lgGo');b.disabled=true;b.textContent='Entrando…';
+  let r;try{r=await authCall('token?grant_type=password',{email:toEmail(u),password:p})}catch(e){r={ok:false,status:0,j:{}}}
+  b.disabled=false;b.textContent='Entrar';
+  if(!r.ok){err(r.status===0?'No hay conexión con el servidor':(r.status===400||r.status===401)?'Usuario o contraseña incorrectos':'No se pudo entrar ('+r.status+')');return}
+  const guestLib=rawGet('pf.lib',[]).filter(x=>x&&!String(x.id).startsWith('demo-')),guestSess=rawGet('pf.sess',[]).filter(x=>x&&!String(x.id).startsWith('demo-'));
+  keepAuth(r.j,u.includes('@')?userOf(u):u.toLowerCase());rawSet('dt.guest',null);CL.meta=null;
+  showLogin(false);acctUI();reloadData();
+  toast('Hola '+AUTH.name+': trayendo tu biblioteca…');
+  await syncNow();
+  if(guestLib.length||guestSess.length){
+    ask(`En este dispositivo hay ${guestLib.length} ejercicio(s) de invitado. ¿Los sumo a tu cuenta?`,'Sumarlos',()=>{
+      guestLib.forEach(x=>{if(!S.lib.some(v=>v.id===x.id))S.lib.push(norm(x))});
+      guestSess.forEach(x=>{if(!S.sess.some(v=>v.id===x.id))S.sess.push(x)});
+      store.set('pf.lib',S.lib);store.set('pf.sess',S.sess);if(S.view==='lib')renderLib();toast('Sumados a tu cuenta');
+    });
+  }
+}
+async function cloudLogout(silent){
+  if(AUTH&&!silent&&navigator.onLine!==false){try{await syncNow()}catch(e){}}
+  const a=AUTH;
+  if(a&&!silent){try{await fetch(CFG.url+'/auth/v1/logout',{method:'POST',headers:{apikey:CFG.key,Authorization:'Bearer '+a.at}})}catch(e){}}
+  if(a){['pf.lib','pf.sess','pf.draft','dt.meta'].forEach(k=>rawSet('u.'+a.uid+'.'+k,null))}
+  AUTH=null;CL.meta=null;rawSet('dt.auth',null);
+  acctUI();reloadData();showLogin(true);
+}
+function openAcct(){
+  if(!AUTH){showLogin(true);return}
+  const m=meta(),n=S.lib.length;
+  openModal('Tu cuenta',`<p style="margin-top:0"><b style="font-size:18px">${esc(AUTH.name)}</b></p>
+  <p class="muted">${n} ejercicio(s) y ${S.sess.length} sesión(es) en tu biblioteca. ${CL.state==='ok'?'Todo guardado en la nube.':CL.state==='off'?'Sin conexión: se sube cuando vuelva internet.':CL.state==='err'?'Hubo un problema al sincronizar, se reintenta solo.':'Sincronizando…'}</p>
+  <div class="mrow" style="flex-wrap:wrap;gap:8px"><button class="btn" id="acSync">${ic('repeat',15)}Sincronizar ahora</button><button class="btn danger" id="acOut">Cerrar sesión</button></div>
+  <p class="muted" style="font-size:12px;margin-bottom:0">Al cerrar sesión se borra la copia de tu cuenta de este dispositivo (sigue guardada en la nube).</p>`);
+  $('#acSync').onclick=()=>{closeModal();syncNow(true)};
+  $('#acOut').onclick=()=>{closeModal();ask('¿Cerrar sesión en este dispositivo?','Cerrar sesión',()=>cloudLogout())};
+}
+function cloudInit(){
+  acctUI();
+  if(!CFG)return false;
+  $('#bAcct').onclick=openAcct;
+  $('#lgGo').onclick=doLogin;
+  $('#lgPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+  $('#lgUser').addEventListener('keydown',e=>{if(e.key==='Enter')$('#lgPass').focus()});
+  $('#lgGuest').onclick=()=>{rawSet('dt.guest',true);showLogin(false);acctUI();toast('Modo invitado: todo queda en este dispositivo')};
+  addEventListener('online',()=>{if(AUTH)syncNow()});
+  addEventListener('offline',()=>{if(AUTH)setCloud('off')});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&AUTH)syncNow()});
+  if(AUTH){setTimeout(()=>syncNow(),400);return true}
+  if(!rawGet('dt.guest',false))showLogin(true);
+  return false;
+}
+
+/* ============ compartir un ejercicio con otro profe ============ */
+async function shareExercise(x){
+  const o={type:'deportac-ejercicio',v:1,ex:slim(x),audios:{}};
+  const ids=audIds(x);await audLoad(ids);
+  for(const id of ids){const info=AUD.mem.get(id);if(info)o.audios[id]=await blobToDataURL(info.blob)}
+  const nm=(x.name||'ejercicio').replace(/[^\wáéíóúñÁÉÍÓÚÑ\s-]/g,'').trim().replace(/\s+/g,'-')+'.deportac.json';
+  const blob=new Blob([JSON.stringify(o)],{type:'application/json'});
+  try{const f=new File([blob],nm,{type:'application/json'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:x.name||'Ejercicio'});return}}catch(e){if(e&&e.name==='AbortError')return}
+  dlBlob(blob,nm);toast('Archivo listo: mandáselo al otro profe. Lo abre con Biblioteca → Importar');
+}
+async function importShared(o){
+  const newIds={};
+  for(const [id,du] of Object.entries(o.audios||{})){try{const nid=uid();await audPut(nid,dataURLToBlob(du));newIds[id]=nid}catch(e){}}
+  const x=norm(JSON.parse(JSON.stringify(o.ex)));x.id=uid();x.updated=Date.now();
+  if(x.aud&&newIds[x.aud.id])x.aud.id=newIds[x.aud.id];
+  x.scenes.forEach(sc=>{if(sc.aud&&newIds[sc.aud.id])sc.aud.id=newIds[sc.aud.id]});
+  try{x.thumb=thumbOf(x,0)}catch(e){}
+  S.lib.push(x);store.set('pf.lib',S.lib);
+  return x;
+}
+
 /* ============ biblioteca ============ */
 function renderLib(){
   const q=S.q.trim().toLowerCase(),box=$('#libList');
@@ -2404,7 +2647,7 @@ function renderLib(){
     const br=exBrief(x),aud=x.aud||x.scenes.some(sc=>sc.aud);
     const meta=[FIELDS[x.field]?FIELDS[x.field].n:'',x.scenes.length+(x.scenes.length===1?' escena':' escenas'),(x.series&&x.reps)?`${x.series}×${x.reps}`:'',x.rpe?'RPE '+x.rpe:'',br.avg>0?`≈ ${fmtKm(br.tot)}/jug`:'',aud?'con audio':''].filter(Boolean).join(' · ');
     return`<div class="card" data-id="${x.id}"><div class="cthumb">${x.thumb?`<img src="${x.thumb}" alt="">`:''}</div><div class="cbody"><b>${esc(x.name)}</b><small>${esc(meta)}</small><div class="tags">${tags}</div>
-    <div class="crow"><button class="btn pri" data-a="open">Abrir</button><button class="btn icon" data-a="dup" title="Duplicar" aria-label="Duplicar">${ic('copy')}</button><button class="btn icon danger" data-a="del" title="Eliminar" aria-label="Eliminar">${ic('trash')}</button></div></div></div>`}).join('')}</div>`).join('');
+    <div class="crow"><button class="btn pri" data-a="open">Abrir</button><button class="btn icon" data-a="share" title="Compartir con otro profe" aria-label="Compartir">${ic('upload')}</button><button class="btn icon" data-a="dup" title="Duplicar" aria-label="Duplicar">${ic('copy')}</button><button class="btn icon danger" data-a="del" title="Eliminar" aria-label="Eliminar">${ic('trash')}</button></div></div></div>`}).join('')}</div>`).join('');
 }
 function openFromLib(id){
   const x=S.lib.find(v=>v.id===id);if(!x)return;
@@ -2415,6 +2658,7 @@ $('#libList').addEventListener('click',e=>{
   const ch=e.target.closest('[data-t]');if(ch){S.ft=ch.dataset.t;renderLib();return}
   const b=e.target.closest('[data-a]'),c=e.target.closest('.card');if(!b||!c)return;const id=c.dataset.id,a=b.dataset.a;
   if(a==='open')openFromLib(id);
+  else if(a==='share'){const x=S.lib.find(v=>v.id===id);if(x)shareExercise(x)}
   else if(a==='dup'){const x=S.lib.find(v=>v.id===id);if(!x)return;const n=clone(x);n.id=uid();n.name+=' (copia)';n.updated=Date.now();S.lib.push(n);store.set('pf.lib',S.lib);renderLib();toast('Ejercicio duplicado');dupAudio(n).then(()=>store.set('pf.lib',S.lib))}
   else if(a==='del'){const x=S.lib.find(v=>v.id===id);ask(`¿Eliminar "${esc(x?x.name:'')}" de la biblioteca?`,'Eliminar',()=>{S.lib=S.lib.filter(v=>v.id!==id);store.set('pf.lib',S.lib);renderLib()})}
 });
@@ -2425,7 +2669,7 @@ $('#bBackup').onclick=()=>{
   openModal('Copia de seguridad',`<p class="muted">Tus ejercicios y sesiones se guardan en este dispositivo. Usá esto para respaldarlos o pasarlos a otro equipo. El archivo incluye los audios; el texto para copiar no.</p>
   <textarea id="bkText" readonly rows="4"></textarea>
   <div class="mrow"><button class="btn" id="bkCopy">Copiar texto (sin audios)</button><button class="btn pri" id="bkDl">Descargar archivo (con audios)</button></div><hr>
-  <b>Importar</b><p class="muted">Elegí un archivo de respaldo o pegá el texto copiado. Se suma a lo que ya tenés.</p>
+  <b>Importar</b><p class="muted">Elegí un respaldo o un ejercicio que te compartió otro profe (.deportac.json). Se suma a lo que ya tenés.</p>
   <input type="file" id="bkFile" accept=".json,application/json"><textarea id="bkIn" rows="3" style="margin-top:8px" placeholder="Pegá acá el respaldo"></textarea>
   <div class="mrow"><button class="btn pri" id="bkGo">Importar</button></div>`);
   $('#bkText').value=plain;
@@ -2441,6 +2685,7 @@ $('#bBackup').onclick=()=>{
   $('#bkGo').onclick=async()=>{
     try{
       const o=JSON.parse($('#bkIn').value);let n=0;
+      if(o&&o.type==='deportac-ejercicio'&&o.ex){const x=await importShared(o);closeModal();renderLib();toast('Ejercicio importado: '+(x.name||'sin nombre'));return}
       for(const [id,du] of Object.entries(o.audios||{})){try{await audPut(id,dataURLToBlob(du))}catch(e){}}
       (o.exercises||[]).forEach(x=>{if(!x||!x.id||!x.scenes)return;norm(x);const i=S.lib.findIndex(v=>v.id===x.id);if(i>=0)S.lib[i]=x;else S.lib.push(x);n++});
       (o.sessions||[]).forEach(x=>{if(!x||!x.id)return;const i=S.sess.findIndex(v=>v.id===x.id);if(i>=0)S.sess[i]=x;else S.sess.push(x)});
@@ -2561,7 +2806,8 @@ addEventListener('keydown',e=>{
     if(S.view==='lib')renderLib();if(S.view==='sess')renderSess();
   };
   const fl=(document.fonts&&document.fonts.load)?Promise.all([document.fonts.load("800 20px 'Barlow Condensed'"),document.fonts.load("700 20px 'Barlow Condensed'")]).catch(()=>{}):Promise.resolve();
-  fl.then(seed,seed);
+  const logged=cloudInit();
+  if(!logged)fl.then(seed,seed);
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{buildPalette();renderScenes();paint()});
   setTimeout(()=>{audGC()},5000);
   /* app instalable y uso sin conexión (solo cuando se abre desde un sitio web) */
