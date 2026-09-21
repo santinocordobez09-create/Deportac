@@ -114,6 +114,30 @@ body.recbig #recbar{top:14px;font-size:16px;padding:8px 10px 8px 16px}
 #login.adm #lgGuest,#login.adm #lgNote{display:none}
 #login .lerr{background:rgba(220,38,38,.15);border:1px solid rgba(220,38,38,.45);color:#fca5a5;border-radius:10px;padding:8px 10px;font-size:13px;margin-bottom:10px}
 #bAcct{gap:7px}
+.pkbox{margin:0 0 18px}
+.pkhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 8px}
+.pkhead b{font:800 20px 'Barlow Condensed',sans-serif;letter-spacing:.03em}
+.pro{display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#1a1205;font:800 11px 'Barlow',sans-serif;letter-spacing:.06em;padding:2px 8px;border-radius:99px}
+.pkd{font-size:13px;color:var(--muted);width:100%;margin-top:-4px}
+.pkc{border-color:rgba(245,158,11,.45)!important}
+.pkc .cthumb{position:relative}
+.pkc .cthumb:after{content:'PRO';position:absolute;top:6px;left:6px;background:#f59e0b;color:#1a1205;font:800 10px 'Barlow',sans-serif;padding:1px 6px;border-radius:6px}
+#robar{display:none;gap:10px;align-items:center;padding:7px 12px;background:linear-gradient(90deg,rgba(245,158,11,.22),rgba(245,158,11,.06));border-bottom:1px solid rgba(245,158,11,.45);flex-wrap:wrap}
+#robar b{font:800 16px 'Barlow Condensed',sans-serif;letter-spacing:.03em}
+body.ro #robar{display:flex}
+body.ro #pal,body.ro #bSave,body.ro #bUndo,body.ro #bRedo,body.ro #bDet,body.ro #bNarr,body.ro #bTime,body.ro #bTools,body.ro .sc.add,body.ro .sc .x,body.ro #hint,body.ro #bScFold{display:none!important}
+body.ro.nodl #bVid,body.ro.nodl #bPdf,body.ro.nodl #bImg{display:none!important}
+body.ro #v-board{grid-template-columns:minmax(0,1fr)!important}
+body.ro #exName{pointer-events:none}
+body.ro #fieldSel{pointer-events:none;opacity:.75}
+.admtabs{display:flex;gap:4px;margin:-4px 0 12px;border-bottom:1px solid var(--line)}
+.admtabs button{border:0;background:none;color:var(--muted);font:800 15px 'Barlow Condensed',sans-serif;letter-spacing:.05em;text-transform:uppercase;padding:6px 12px 8px;border-bottom:2px solid transparent;cursor:pointer}
+.admtabs button.on{color:var(--text);border-bottom-color:var(--accent)}
+.pkpick{max-height:40vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:4px 8px}
+.pkpick label{display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px dashed var(--line);font-size:14px;cursor:pointer}
+.pkpick label:last-child{border-bottom:0}
+.pkpick .fh{font:800 12px 'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:8px 0 2px}
+.pkpick input{width:18px;height:18px;flex:none}
 .admnew{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px}
 .admtbl{max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:10px}
 .admtbl table{width:100%;border-collapse:collapse}
@@ -451,6 +475,7 @@ body.zen header{display:none}
         <button class="btn on" id="bDist" title="Mostrar metros" aria-label="Mostrar metros"><span data-ic="ruler"></span></button>
         <button class="btn" id="bRot" hidden><span data-ic="repeat"></span>Rotar estaciones</button>
       </div>
+      <div id="robar"><span class="pro">★ PRO</span><b id="roName">Ejercicio profesional</b><span class="muted" id="roInfo">solo para ver</span><span style="flex:1"></span><button class="btn" id="roClose">✕ Cerrar</button></div>
       <div id="freebar"><b>Modo libre</b><span class="muted">pizarra estática, sin animación</span><button class="btn pri" id="bAnim">Convertir en animación</button></div>
       <div id="tp" hidden>
         <div class="tphead">
@@ -517,7 +542,7 @@ const CFG=(window.DEPORTAC_CONFIG&&window.DEPORTAC_CONFIG.url&&window.DEPORTAC_C
 const rawGet=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}};
 const rawSet=(k,v)=>{try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
 let AUTH=CFG?rawGet('dt.auth',null):null;
-const NSK={'pf.lib':1,'pf.sess':1,'pf.draft':1};
+const NSK={'pf.lib':1,'pf.sess':1,'pf.draft':1,'pf.pkgs':1};
 const nsKey=k=>(NSK[k]&&AUTH&&AUTH.uid)?'u.'+AUTH.uid+'.'+k:k;
 const store={
   get(k,d){return rawGet(nsKey(k),d)},
@@ -1358,6 +1383,7 @@ function snapPt(p,exId){
   return best?{x:best.x,y:best.y,id:best.id}:{x:p.x,y:p.y,id:null};
 }
 stage.addEventListener('pointerdown',ev=>{
+  if(S.ex&&S.ex.ro){if(S.playing)pause();else play();return}
   if(S.rec&&S.rec.narr){ev.preventDefault();return}
   if(document.body.classList.contains('recbig')){pause();stopPreview();document.body.classList.remove('recbig');fit();return}
   if(S.pv)stopPreview();
@@ -1493,8 +1519,8 @@ $('#pal').addEventListener('click',e=>{
 const snap=()=>JSON.stringify({s:S.ex.scenes,c:S.cur,f:S.ex.field});
 function resetHist(){S.hist=[snap()];S.hi=0}
 function pushHist(){S.hist=S.hist.slice(0,S.hi+1);S.hist.push(snap());if(S.hist.length>80)S.hist.shift();S.hi=S.hist.length-1}
-function saveDraft(){store.set('pf.draft',S.ex)}
-function commit(){S.dirty=true;propagateEx(S.ex,S.cur);pushHist();saveDraft();renderScenes();paint()}
+function saveDraft(){if(S.ex&&S.ex.ro)return;store.set('pf.draft',S.ex)}
+function commit(){if(S.ex&&S.ex.ro){paint();return}S.dirty=true;propagateEx(S.ex,S.cur);pushHist();saveDraft();renderScenes();paint()}
 function restore(str){const o=JSON.parse(str);S.ex.scenes=o.s;S.ex.field=o.f;S.cur=Math.min(o.c,o.s.length-1);S.sel=null;$('#fieldSel').value=S.ex.field;renderScenes();renderCard();saveDraft();paint()}
 function undo(){stopPreview();if(S.hi>0){S.hi--;restore(S.hist[S.hi])}}
 function redo(){stopPreview();if(S.hi<S.hist.length-1){S.hi++;restore(S.hist[S.hi])}}
@@ -1688,7 +1714,7 @@ $('#bRot').onclick=()=>{
 };
 
 /* ============ modales y avisos ============ */
-function openModal(title,html,wide){$('.mcard').classList.toggle('wide',!!wide);$('#mTitle').textContent=title;const b=$('#mBody');b.oninput=null;b.onclick=null;b.innerHTML=html;$('#modal').hidden=false;hydrateIcons(b)}
+function openModal(title,html,wide){$('.mcard').classList.toggle('wide',!!wide);$('#mTitle').textContent=title;const b=$('#mBody');b.oninput=null;b.onclick=null;b.onchange=null;b.innerHTML=html;$('#modal').hidden=false;hydrateIcons(b)}
 function closeModal(){$('#modal').hidden=true;$('#mBody').innerHTML=''}
 $('#mX').innerHTML=ic('x');$('#mX').onclick=closeModal;
 $('#modal').addEventListener('pointerdown',e=>{if(e.target.id==='modal')closeModal()});
@@ -1751,11 +1777,12 @@ function openDetails(){
   </div><p class="muted">Las estadísticas de distancia multiplican lo animado por las veces que se repite y por las series.</p>
   <div class="mrow"><button class="btn" id="dSt">${ic('chart')}Ver estadísticas</button><button class="btn pri" id="dOk">Listo</button></div>`);
   $('#mBody').oninput=e=>{const k=e.target.dataset.d;if(!k)return;S.ex[k]=e.target.type==='number'?(e.target.value===''?'':+e.target.value):e.target.value;S.dirty=true;saveDraft()};
-  $('#mBody').addEventListener('click',e=>{const md=e.target.closest('[data-md]');if(!md)return;if(setFreeMode(md.dataset.md==='free'))openDetails()});
+  $('#mBody').onclick=e=>{const md=e.target.closest('[data-md]');if(!md)return;if(setFreeMode(md.dataset.md==='free'))openDetails()};
   $('#dOk').onclick=closeModal;$('#dSt').onclick=()=>{closeModal();openStats()};
 }
 function loadEx(ex){
-  S.hintOff=!!(ex&&(ex.free||(ex.scenes&&(ex.scenes.length>1||(ex.scenes[0].els||[]).length))));
+  S.hintOff=!!(ex&&(ex.ro||ex.free||(ex.scenes&&(ex.scenes.length>1||(ex.scenes[0].els||[]).length))));
+  if(!(ex&&ex.ro))document.body.classList.remove('ro','nodl');
   stopAud();S.ex=norm(ex);S.cur=0;S.sel=null;S.menu=false;S.pv=null;S.playing=false;S.tmp=null;S.tseg=null;S.drag=null;S.act='move';S.dirty=false;propagateEx(S.ex,0);resetHist();saveDraft();
   audLoad(audIds(S.ex)).then(()=>renderScenes());
   applyMode();$('#exName').value=ex.name;$('#fieldSel').value=ex.field;setPlayIcon();$('#scrub').value=0;renderScenes();renderCard();setView('board');fit();
@@ -2505,7 +2532,7 @@ async function api(path,opt,retry){
 }
 async function cloudGetAudio(id){
   if(!AUTH)return null;
-  const r=await api('/storage/v1/object/authenticated/audios/'+AUTH.uid+'/'+encodeURIComponent(id));
+  const r=await api('/storage/v1/object/authenticated/audios/'+(AUDOWN[id]||AUTH.uid)+'/'+encodeURIComponent(id));
   return r.ok?await r.blob():null;
 }
 async function cloudPutAudio(id){
@@ -2571,6 +2598,7 @@ async function syncNow(manual){
     const up=await cloudPush();
     const down=await cloudPull();
     if(!S.lib.length&&!meta().seeded){meta().seeded=true;saveMeta();addExamples();await cloudPush()}
+    await loadPkgs();
     setCloud('ok');
     if(manual)toast(up||down?`Listo: ${up} subidos, ${down} actualizados`:'Todo al día');
   }catch(e){setCloud(navigator.onLine===false?'off':'err');if(manual)toast('No se pudo sincronizar. Revisá la conexión')}
@@ -2579,7 +2607,7 @@ async function syncNow(manual){
 }
 function cloudDirty(){if(!AUTH)return;setCloud('sync');clearTimeout(CL.t);CL.t=setTimeout(()=>syncNow(),1500)}
 function reloadData(){
-  S.lib=store.get('pf.lib',[]).map(norm);S.sess=store.get('pf.sess',[]);
+  S.lib=store.get('pf.lib',[]).map(norm);S.sess=store.get('pf.sess',[]);S.pkgs=AUTH?store.get('pf.pkgs',[]):[];mapPkgAudios();
   const d=store.get('pf.draft',null);
   loadEx(norm((d&&d.scenes&&d.scenes.length)?d:newEx()));
   if(S.view==='lib')renderLib();if(S.view==='sess')renderSess();
@@ -2713,7 +2741,8 @@ function credBox(usr,pass,title){
   $('#cbCopy').onclick=()=>{const done=()=>toast('Copiado: pegalo en WhatsApp');if(navigator.clipboard)navigator.clipboard.writeText(msg).then(done,()=>toast('No se pudo copiar'));else toast('Seleccioná y copiá a mano')};
   $('#cbBack').onclick=()=>openAdmin();
 }
-async function openAdmin(){
+async function openAdmin(tab){
+  if(tab==='pk'){if($('#modal').hidden)openModal('Panel de administrador','');return openPkgAdmin()}
   openModal('Panel de administrador',`<p class="muted">Cargando profes…</p>`);
   const r=await rpc('admin_list',{});
   if(!r.ok){$('#mBody').innerHTML=`<p>No se pudo abrir el panel: ${esc(r.msg)}</p>`;return}
@@ -2721,9 +2750,11 @@ async function openAdmin(){
   const row=u=>`<tr data-id="${u.id}" data-u="${esc(u.usuario)}">
     <td><b>${esc(u.usuario)}</b>${u.es_admin?' <span class="tagadm">admin</span>':''}${u.bloqueado?' <span class="tagblk">bloqueado</span>':''}<div class="muted sm">Entró ${fmtAgo(u.ultima)} · ${u.ejercicios} ejercicio(s)</div></td>
     <td class="c"><button class="btn sm" data-ad="devs" title="Ver dispositivos">${u.dispositivos}/${u.es_admin?'∞':'2'}</button></td>
-    <td class="acts"><button class="btn sm" data-ad="pass">Contraseña</button>${u.es_admin?'':`<button class="btn sm" data-ad="${u.bloqueado?'unblock':'block'}">${u.bloqueado?'Desbloquear':'Bloquear'}</button><button class="btn sm danger" data-ad="del" aria-label="Borrar">${ic('trash',14)}</button>`}</td></tr>`;
+    <td class="acts">${u.es_admin?'':`<button class="btn sm" data-ad="pkg">Paquetes${PK.length?' ('+npk(u.id)+')':''}</button>`}<button class="btn sm" data-ad="pass">Contraseña</button>${u.es_admin?'':`<button class="btn sm" data-ad="${u.bloqueado?'unblock':'block'}">${u.bloqueado?'Desbloquear':'Bloquear'}</button><button class="btn sm danger" data-ad="del" aria-label="Borrar">${ic('trash',14)}</button>`}</td></tr>`;
   $('#mTitle').textContent='Panel de administrador';
-  $('#mBody').innerHTML=`
+  const PK=await admPkgs()||[];
+  const npk=id=>PK.filter(p=>(p.users||[]).includes(id)).length;
+  $('#mBody').innerHTML=admTabs('us')+`
   <div class="admnew"><b>Nuevo profe</b>
     <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">
       <input id="adU" placeholder="usuario (ej: juanperez)" autocapitalize="none" spellcheck="false" style="flex:1 1 150px">
@@ -2733,6 +2764,7 @@ async function openAdmin(){
     </div></div>
   <div class="admtbl"><table><tr><th>Profe (${L.length})</th><th class="c">Dispositivos</th><th></th></tr>${L.map(row).join('')}</table></div>
   <p class="muted sm" style="margin-bottom:0">Cada cuenta entra en 2 dispositivos como máximo. Si un profe cambia de celular, liberale uno tocando el número. Los que no se usan hace 30 días se liberan solos.</p>`;
+  bindTabs();$('#mBody').onchange=null;
   $('#adGen').onclick=()=>{$('#adP').value=genPass()};
   $('#adNew').onclick=async()=>{
     const u=$('#adU').value.trim().toLowerCase(),p=$('#adP').value.trim();
@@ -2744,6 +2776,7 @@ async function openAdmin(){
   $('#mBody').onclick=async e=>{
     const b=e.target.closest('[data-ad]');if(!b)return;
     const tr=b.closest('tr'),id=tr.dataset.id,u=tr.dataset.u,a=b.dataset.ad;
+    if(a==='pkg'){pkgsForUser(id,u);return}
     if(a==='pass'){
       openModal('Nueva contraseña para '+u,`<p class="muted">Al cambiarla, cualquiera que esté usando esta cuenta queda afuera (en menos de una hora) y se liberan sus dispositivos.</p>
       <div class="row" style="gap:6px"><input id="npP" value="${genPass()}" style="flex:1"><button class="btn" id="npG">Generar otra</button></div>
@@ -2769,6 +2802,106 @@ async function openAdmin(){
   };
 }
 
+
+/* ============ paquetes profesionales ============ */
+const AUDOWN={};
+function mapPkgAudios(){(S.pkgs||[]).forEach(p=>(p.exercises||[]).forEach(x=>{try{audIds(x).forEach(a=>{AUDOWN[a]=p.owner})}catch(e){}}))}
+async function loadPkgs(){
+  if(!AUTH)return;
+  let r;try{r=await rpc('my_packages',{})}catch(e){return}
+  if(!r.ok||!Array.isArray(r.data))return;
+  const sig=JSON.stringify(r.data);if(sig===S.pkgSig)return;S.pkgSig=sig;
+  S.pkgs=r.data;store.quiet('pf.pkgs',S.pkgs);mapPkgAudios();
+  if(S.view==='lib')renderLib();
+  if(S.ex&&S.ex.ro&&!findPro(S.ex.roPkg,S.ex.id)){closePro();toast('Ese paquete ya no está habilitado para tu cuenta')}
+}
+function findPro(pid,xid){const p=(S.pkgs||[]).find(v=>v.id===pid);if(!p)return null;const x=(p.exercises||[]).find(v=>v.id===xid);return x?{p,x}:null}
+const PKTH={};
+function pkThumb(x){const k=x.id+':'+(x.updated||0);if(!PKTH[k]){try{PKTH[k]=thumbOf(norm(JSON.parse(JSON.stringify(x))),0)}catch(e){PKTH[k]=''}}return PKTH[k]}
+function renderPkgs(){
+  const P=(S.pkgs||[]).filter(p=>(p.exercises||[]).length);
+  const box=$('#libList');if(!box||!P.length)return;
+  const h=P.map(p=>`<div class="pkbox"><div class="pkhead"><span class="pro">★ PRO</span><b>${esc(p.name)}</b><span class="muted" style="font-size:13px">${p.exercises.length} ejercicio(s)${p.allow_download?' · con descarga':''}</span>${p.descr?`<span class="pkd">${esc(p.descr)}</span>`:''}</div>
+    <div class="cards">${p.exercises.map(x=>{const br=exBrief(norm(JSON.parse(JSON.stringify(x))));const th=pkThumb(x);
+      const meta=[FIELDS[x.field]?FIELDS[x.field].n:'',x.scenes.length+(x.scenes.length===1?' escena':' escenas'),x.rpe?'RPE '+x.rpe:'',br.avg>0?`≈ ${fmtKm(br.tot)}/jug`:''].filter(Boolean).join(' · ');
+      return`<div class="card pkc" data-pk="${p.id}" data-px="${esc(x.id)}"><div class="cthumb">${th?`<img src="${th}" alt="">`:''}</div><div class="cbody"><b>${esc(x.name||'Ejercicio')}</b><small>${esc(meta)}</small>${x.objective?`<small class="muted">${esc(x.objective)}</small>`:''}<div class="crow"><button class="btn pri" data-pa="view">${ic('play',14)}Ver</button></div></div></div>`}).join('')}</div></div>`).join('');
+  const wrap=document.createElement('div');wrap.id='pkgBox';wrap.innerHTML=`<div class="folder">Paquetes profesionales</div>`+h;
+  box.insertBefore(wrap,box.firstChild);
+}
+function openPro(pid,xid){
+  const f=findPro(pid,xid);if(!f)return;
+  stopPreview();
+  const x=norm(JSON.parse(JSON.stringify(f.x)));x.ro=true;x.roPkg=pid;
+  S.roDl=!!f.p.allow_download;
+  loadEx(x);
+  document.body.classList.add('ro');document.body.classList.toggle('nodl',!S.roDl);
+  $('#roName').textContent=x.name||'Ejercicio profesional';
+  $('#roInfo').textContent=f.p.name+' · solo para ver'+(S.roDl?' · se puede descargar':'');
+  fit();toast('Tocá ▶ para verlo');
+}
+function closePro(){
+  document.body.classList.remove('ro','nodl');
+  const d=store.get('pf.draft',null);
+  loadEx(norm((d&&d.scenes&&d.scenes.length)?d:newEx()));
+  setView('lib');
+}
+$('#roClose').onclick=closePro;
+$('#libList').addEventListener('click',e=>{
+  const b=e.target.closest('[data-pa]'),c=e.target.closest('.pkc');if(!b||!c)return;
+  e.stopPropagation();openPro(c.dataset.pk,c.dataset.px);
+},true);
+
+/* ---- administración de paquetes ---- */
+async function admPkgs(){const r=await rpc('admin_packages',{});return r.ok?(r.data||[]):null}
+async function openPkgAdmin(){
+  $('#mTitle').textContent='Panel de administrador';
+  $('#mBody').innerHTML=admTabs('pk')+'<p class="muted">Cargando paquetes…</p>';bindTabs();
+  const P=await admPkgs();if(!P){$('#mBody').innerHTML=admTabs('pk')+'<p>No se pudieron cargar los paquetes. ¿Pegaste el código de PAQUETES en Supabase?</p>';bindTabs();return}
+  $('#mBody').innerHTML=admTabs('pk')+`
+  <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px"><span class="muted sm">Los paquetes se arman con los ejercicios guardados en esta cuenta. Después, en la pestaña Profes, le tildás a cada uno cuáles tiene.</span><button class="btn pri" id="pkNew">${ic('plus',15)}Nuevo paquete</button></div>
+  ${P.length?`<div class="admtbl"><table><tr><th>Paquete</th><th class="c">Profes</th><th></th></tr>${P.map(p=>`<tr data-pid="${p.id}"><td><b>${esc(p.name)}</b><div class="muted sm">${(p.ex_ids||[]).length} ejercicio(s) · ${p.allow_download?'con descarga':'sin descarga'}</div></td><td class="c">${(p.users||[]).length}</td><td class="acts"><button class="btn sm" data-pe="edit">Editar</button><button class="btn sm danger" data-pe="del" aria-label="Borrar">${ic('trash',14)}</button></td></tr>`).join('')}</table></div>`:'<p class="muted">Todavía no hay paquetes. Tocá "Nuevo paquete".</p>'}`;
+  bindTabs();$('#mBody').onchange=null;
+  $('#pkNew').onclick=()=>editPkg(null);
+  $('#mBody').onclick=e=>{const b=e.target.closest('[data-pe]');if(!b)return;const pid=b.closest('tr').dataset.pid,p=P.find(v=>v.id===pid);
+    if(b.dataset.pe==='edit')editPkg(p);
+    else ask(`¿Borrar el paquete "${esc(p.name)}"? A los profes que lo tenían les desaparece (los ejercicios siguen en tu biblioteca).`,'Borrar',async()=>{const x=await rpc('admin_delete_package',{pid});toast(x.ok?'Paquete borrado':x.msg);openAdmin('pk')});};
+}
+function editPkg(p){
+  const sel=new Set(p?p.ex_ids:[]);
+  const groups={};S.lib.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).forEach(x=>{const k=x.folder||'Sin tipo';(groups[k]=groups[k]||[]).push(x)});
+  openModal(p?'Editar paquete':'Nuevo paquete',`
+  <label class="full">Nombre del paquete<input id="pkN" value="${esc(p?p.name:'')}" placeholder="Ej: Pretemporada completa"></label>
+  <label class="full" style="margin-top:8px">Descripción (la ven los profes)<input id="pkD" value="${esc(p?p.descr:'')}" placeholder="Ej: 4 semanas de trabajo aeróbico y fuerza"></label>
+  <label style="display:flex;align-items:center;gap:8px;margin:10px 0"><input type="checkbox" id="pkDl"${p&&p.allow_download?' checked':''} style="width:18px;height:18px"> Permitir descargar video, PDF e imagen</label>
+  <b>Ejercicios del paquete</b> <span class="muted sm" id="pkCount"></span>
+  <div class="pkpick">${S.lib.length?Object.keys(groups).sort().map(k=>`<div class="fh">${esc(k)}</div>`+groups[k].map(x=>`<label><input type="checkbox" value="${esc(x.id)}"${sel.has(x.id)?' checked':''}>${esc(x.name||'Sin nombre')}</label>`).join('')).join(''):'<p class="muted">Tu biblioteca está vacía: guardá ejercicios primero.</p>'}</div>
+  <div class="mrow"><button class="btn" id="pkX">Volver</button><button class="btn pri" id="pkOk">Guardar paquete</button></div>`);
+  const cnt=()=>{const c=$('#pkCount');if(c)c.textContent='('+$$('.pkpick input:checked').length+' elegidos)'};cnt();
+  $('#mBody').onclick=null;$('#mBody').onchange=cnt;
+  $('#pkX').onclick=()=>openAdmin('pk');
+  $('#pkOk').onclick=async()=>{
+    const nm=$('#pkN').value.trim();if(!nm){toast('Poné un nombre al paquete');return}
+    const exs=$$('.pkpick input:checked').map(i=>i.value);if(!exs.length){toast('Elegí al menos un ejercicio');return}
+    const auds=[...new Set(exs.flatMap(id=>{const x=S.lib.find(v=>v.id===id);return x?audIds(x):[]}))];
+    $('#pkOk').disabled=true;$('#pkOk').textContent='Guardando…';
+    await syncNow();
+    const x=await rpc('admin_save_package',{pid:p?p.id:null,nm,ds:$('#pkD').value.trim(),dl:$('#pkDl').checked,exs,auds});
+    if(!x.ok){$('#pkOk').disabled=false;$('#pkOk').textContent='Guardar paquete';toast(x.msg);return}
+    toast(p?'Paquete actualizado':'Paquete creado: ahora habilitalo a los profes');openAdmin('pk');
+  };
+}
+async function pkgsForUser(id,u){
+  const P=await admPkgs();if(!P)return;
+  openModal('Paquetes de '+u,P.length?`<p class="muted sm" style="margin-top:0">Tildá los que querés que ${esc(u)} pueda ver. Se aplica al instante.</p><div class="pkpick">${P.map(p=>`<label><input type="checkbox" data-pk="${p.id}"${(p.users||[]).includes(id)?' checked':''}><span><b>${esc(p.name)}</b> <span class="muted sm">${(p.ex_ids||[]).length} ejercicio(s)${p.allow_download?' · con descarga':''}</span></span></label>`).join('')}</div><div class="mrow"><button class="btn" id="puBack">Volver al panel</button></div>`:'<p class="muted">Todavía no creaste paquetes. Andá a la pestaña Paquetes.</p><div class="mrow"><button class="btn" id="puBack">Volver al panel</button></div>');
+  $('#puBack').onclick=()=>openAdmin();
+  $('#mBody').onclick=null;
+  $('#mBody').onchange=async e=>{const c=e.target.closest('[data-pk]');if(!c)return;c.disabled=true;
+    const x=await rpc('admin_set_access',{pid:c.dataset.pk,uid:id,give:c.checked});c.disabled=false;
+    if(!x.ok){c.checked=!c.checked;toast(x.msg)}else toast(c.checked?'Paquete habilitado':'Paquete quitado')};
+}
+const admTabs=t=>`<div class="admtabs"><button data-tab="us" class="${t==='us'?'on':''}">Profes</button><button data-tab="pk" class="${t==='pk'?'on':''}">Paquetes</button></div>`;
+function bindTabs(){$$('.admtabs [data-tab]').forEach(b=>b.onclick=()=>openAdmin(b.dataset.tab))}
+
 /* ============ compartir un ejercicio con otro profe ============ */
 async function shareExercise(x){
   const o={type:'deportac-ejercicio',v:1,ex:slim(x),audios:{}};
@@ -2791,7 +2924,8 @@ async function importShared(o){
 }
 
 /* ============ biblioteca ============ */
-function renderLib(){
+function renderLib(){renderLibOwn();renderPkgs()}
+function renderLibOwn(){
   const q=S.q.trim().toLowerCase(),box=$('#libList');
   if(!S.lib.length){box.innerHTML='<div class="empty"><b>Todavía no hay ejercicios guardados</b>Armá uno en la pizarra y tocá Guardar, o tocá "Ejemplos" para cargar 10 ejercicios listos (técnica, circuitos, velocidad y trabajos físicos).</div>';return}
   const types=[...new Set(S.lib.map(x=>x.folder||'Sin tipo'))].sort();
@@ -2926,6 +3060,7 @@ const themeIcon=()=>{$('#bTheme').innerHTML=ic(effTheme()==='dark'?'sun':'moon')
 $('#bTheme').onclick=()=>{const n=effTheme()==='dark'?'light':'dark';document.documentElement.dataset.theme=n;store.set('pf.theme',n);themeIcon()};
 addEventListener('keydown',e=>{
   if(S.view!=='board'||!$('#modal').hidden||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+  if(S.ex&&S.ex.ro){if(e.key===' '){play();e.preventDefault()}return}
   const mod=e.ctrlKey||e.metaKey;
   if(e.key==='Delete'||e.key==='Backspace'){const o=selObj();if(o){if(S.sel.k==='el')delEl(o.id);else if(o.k==='measure')S.ex.scenes.forEach(s=>{s.arrows=s.arrows.filter(a=>a.id!==o.id)});else scene().arrows=scene().arrows.filter(a=>a.id!==o.id);S.sel=null;renderCard();commit()}e.preventDefault()}
   else if(mod&&e.key.toLowerCase()==='z'){e.shiftKey?redo():undo();e.preventDefault()}
