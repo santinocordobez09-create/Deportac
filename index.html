@@ -2554,7 +2554,7 @@ async function cloudPush(){
   for(let i=0;i<rows.length;i+=40){
     const chunk=rows.slice(i,i+40);
     const r=await api('/rest/v1/items?on_conflict=user_id,id',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(chunk.map(c=>c.row))});
-    if(!r.ok)throw new Error('push '+r.status);
+    if(!r.ok){if(r.status===401||r.status===403){let j=null;try{j=await r.json()}catch(e){}if(j&&j.code==='42501'){CL.grantMissing=true}}throw new Error('push '+r.status)}
     chunk.forEach(c=>{m.synced[c.key]=c.h});saveMeta();
   }
   return rows.length;
@@ -2601,7 +2601,7 @@ async function syncNow(manual){
     await loadPkgs();
     setCloud('ok');
     if(manual)toast(up||down?`Listo: ${up} subidos, ${down} actualizados`:'Todo al día');
-  }catch(e){setCloud(navigator.onLine===false?'off':'err');if(manual)toast('No se pudo sincronizar. Revisá la conexión')}
+  }catch(e){setCloud(navigator.onLine===false?'off':'err',CL.grantMissing?'Falta un permiso en Supabase (pegar AJUSTE.sql)':'');if(manual)toast(CL.grantMissing?'Falta un permiso en Supabase: pegá el bloque de AJUSTE en el SQL Editor':'No se pudo sincronizar. Revisá la conexión')}
   CL.busy=false;
   if(CL.again){CL.again=false;setTimeout(()=>syncNow(),300)}
 }
@@ -2673,7 +2673,7 @@ async function cloudLogout(silent){
   if(AUTH&&!silent&&navigator.onLine!==false){try{await syncNow()}catch(e){}}
   const a=AUTH;
   if(a&&!silent){try{await fetch(CFG.url+'/auth/v1/logout',{method:'POST',headers:{apikey:CFG.key,Authorization:'Bearer '+a.at}})}catch(e){}}
-  if(a){['pf.lib','pf.sess','pf.draft','dt.meta'].forEach(k=>rawSet('u.'+a.uid+'.'+k,null))}
+  if(a){['pf.lib','pf.sess','pf.draft','pf.pkgs','dt.meta','dt.pksig'].forEach(k=>rawSet('u.'+a.uid+'.'+k,null))}
   AUTH=null;CL.meta=null;rawSet('dt.auth',null);
   acctUI();reloadData();showLogin(true);
 }
@@ -2685,7 +2685,7 @@ function openAcct(){
   ${AUTH.admin?`<button class="btn pri" id="acAdm" style="width:100%;justify-content:center;margin-bottom:8px">${ic('sliders',15)}Panel de administrador</button>`:''}
   <div class="mrow" style="flex-wrap:wrap;gap:8px"><button class="btn" id="acSync">${ic('repeat',15)}Sincronizar ahora</button><button class="btn danger" id="acOut">Cerrar sesión</button></div>
   <p class="muted" style="font-size:12px;margin-bottom:0">Al cerrar sesión se borra la copia de tu cuenta de este dispositivo (sigue guardada en la nube).</p>`);
-  $('#acSync').onclick=()=>{closeModal();syncNow(true)};
+  $('#acSync').onclick=()=>{closeModal();syncNow(true).then(()=>loadPkgs(true))};
   const ad=$('#acAdm');if(ad)ad.onclick=()=>openAdmin();
   $('#acOut').onclick=()=>{closeModal();ask('¿Cerrar sesión en este dispositivo?','Cerrar sesión',()=>cloudLogout())};
 }
@@ -2806,10 +2806,17 @@ async function openAdmin(tab){
 /* ============ paquetes profesionales ============ */
 const AUDOWN={};
 function mapPkgAudios(){(S.pkgs||[]).forEach(p=>(p.exercises||[]).forEach(x=>{try{audIds(x).forEach(a=>{AUDOWN[a]=p.owner})}catch(e){}}))}
-async function loadPkgs(){
+async function loadPkgs(force){
   if(!AUTH)return;
+  const mk='u.'+AUTH.uid+'.dt.pksig',old=rawGet(mk,null);
+  if(!force){
+    let g=null;try{g=await rpc('my_packages_sig',{})}catch(e){return}
+    if(g&&g.ok){if(old&&old.sig===g.data)return;S.pkNext=g.data}
+    else if(old&&Date.now()-old.t<6*3600e3)return;
+  }
   let r;try{r=await rpc('my_packages',{})}catch(e){return}
   if(!r.ok||!Array.isArray(r.data))return;
+  rawSet(mk,{sig:S.pkNext!=null?S.pkNext:null,t:Date.now()});S.pkNext=null;
   const sig=JSON.stringify(r.data);if(sig===S.pkgSig)return;S.pkgSig=sig;
   S.pkgs=r.data;store.quiet('pf.pkgs',S.pkgs);mapPkgAudios();
   if(S.view==='lib')renderLib();
