@@ -71,6 +71,21 @@ input[type=range]{padding:0}
 #v-board.on{display:grid}
 #bar{grid-area:bar;display:flex;gap:6px;align-items:center;padding:5px 8px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}
 #bar>*{flex:none}
+#bar{container-type:inline-size;overflow-x:auto}
+#bar #exName{flex:1 1 150px;min-width:96px;max-width:300px}
+#bar #fieldSel{flex:0 1 190px;min-width:118px;max-width:220px}
+#bar .bsep{width:1px;align-self:stretch;margin:4px 2px;background:var(--line)}
+#bar .bspace{flex:1 1 0;min-width:0}
+#bar .btn{white-space:nowrap}
+#bar .l2{display:none}
+#bSave{padding-left:14px;padding-right:16px;font-weight:800}
+/* según el ancho disponible, los textos se acortan (el nombre completo aparece al pasar el mouse) */
+@container (max-width:1310px){#bar .l1.g3{display:none}}
+@container (max-width:1095px){#bar .l1.g1{display:none}#bar .l2.g1{display:inline}}
+@container (max-width:965px){#bar .l1.g2{display:none}}
+@container (max-width:910px){#bar .l2.g1{display:none}}
+@container (max-width:820px){#bar .bsep{display:none}}
+@container (max-width:560px){#bar #fieldSel{min-width:90px}#bar #exName{min-width:70px}}
 #bar #exName{flex:1 1 180px;min-width:120px;font-weight:600}
 #bar #fieldSel{flex:0 1 190px;min-width:110px}
 #ap{border-top:1px solid var(--line);padding:8px 2px 4px}
@@ -95,6 +110,17 @@ body.recbig #recbar{top:14px;font-size:16px;padding:8px 10px 8px 16px}
 #login .lnote{font-size:12px;margin:14px 0 0;text-align:center}
 #login .lerr{background:rgba(220,38,38,.15);border:1px solid rgba(220,38,38,.45);color:#fca5a5;border-radius:10px;padding:8px 10px;font-size:13px;margin-bottom:10px}
 #bAcct{gap:7px}
+.admnew{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.admtbl{max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.admtbl table{width:100%;border-collapse:collapse}
+.admtbl td,.admtbl th{padding:7px 9px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle;font-size:14px}
+.admtbl th{font:700 12px 'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);position:sticky;top:0;background:var(--panel)}
+.admtbl .c{text-align:center}.admtbl .acts{text-align:right;white-space:nowrap}
+.admtbl .acts .btn{margin-left:4px}
+.btn.sm{min-height:30px;padding:3px 9px;font-size:13px}
+.muted.sm{font-size:12px}
+.tagadm,.tagblk{font:700 10.5px 'Barlow',sans-serif;padding:1px 6px;border-radius:99px;text-transform:uppercase;letter-spacing:.04em;vertical-align:middle}
+.tagadm{background:rgba(34,197,94,.18);color:#4ade80}.tagblk{background:rgba(239,68,68,.18);color:#f87171}
 #bAcct .cdot{width:9px;height:9px;border-radius:50%;background:#94a3b8;display:inline-block;flex:none}
 #bAcct.ok .cdot{background:#22c55e}#bAcct.sync .cdot{background:#f59e0b;animation:rp 1s infinite}#bAcct.err .cdot{background:#ef4444}#bAcct.off .cdot{background:#64748b}
 #freebar{display:none;gap:10px;align-items:center;padding:7px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
@@ -382,15 +408,19 @@ body.zen header{display:none}
       <select id="fieldSel" aria-label="Campo"></select>
       <button class="btn icon" id="bUndo" title="Deshacer" aria-label="Deshacer"></button>
       <button class="btn icon" id="bRedo" title="Rehacer" aria-label="Rehacer"></button>
-      <button class="btn" id="bDet"><span data-ic="sliders"></span><span class="lbl-t">Detalles</span></button>
-      <button class="btn" id="bImg"><span data-ic="img"></span><span class="lbl-t">Imagen</span></button>
-      <button class="btn" id="bVid"><span data-ic="download"></span><span class="lbl-t">Descargar video</span></button>
-      <button class="btn" id="bPdf"><span data-ic="doc"></span><span class="lbl-t">Descargar PDF</span></button>
-      <button class="btn" id="bStats"><span data-ic="chart"></span><span class="lbl-t">Estadísticas</span></button>
-      <button class="btn icon" id="bTools" title="Dónde van las herramientas" aria-label="Cambiar herramientas de lugar"><span data-ic="sliders"></span></button>
+      <span class="bsep"></span>
+      <button class="btn pri" id="bSave" title="Guardar en la biblioteca"><span data-ic="save"></span><span class="l1">Guardar</span></button>
+      <button class="btn" id="bNew" title="Ejercicio nuevo"><span data-ic="plus"></span><span class="l1 g2">Nuevo</span></button>
+      <span class="bsep"></span>
+      <button class="btn" id="bVid" title="Descargar el video del ejercicio"><span data-ic="download"></span><span class="l1 g1">Descargar video</span><span class="l2 g1">Video</span></button>
+      <button class="btn" id="bPdf" title="Descargar la hoja en PDF con los pasos"><span data-ic="doc"></span><span class="l1 g1">Descargar PDF</span><span class="l2 g1">PDF</span></button>
+      <button class="btn" id="bImg" title="Descargar una imagen de la escena"><span data-ic="img"></span><span class="l1 g3">Imagen</span></button>
+      <span class="bsep"></span>
+      <button class="btn" id="bDet" title="Detalles del ejercicio (series, RPE, materiales…)"><span data-ic="sliders"></span><span class="l1 g3">Detalles</span></button>
+      <button class="btn" id="bStats" title="Estadísticas de distancia"><span data-ic="chart"></span><span class="l1 g3">Estadísticas</span></button>
+      <span class="bspace"></span>
+      <button class="btn icon" id="bTools" title="Poner las herramientas arriba o al costado" aria-label="Cambiar herramientas de lugar"><span data-ic="sliders"></span></button>
       <button class="btn icon" id="bZen" title="Cancha grande (ocultar todo)" aria-label="Cancha grande"><span data-ic="expand"></span></button>
-      <button class="btn" id="bNew"><span data-ic="plus"></span><span class="lbl-t">Nuevo</span></button>
-      <button class="btn pri" id="bSave"><span data-ic="save"></span><span class="lbl-t">Guardar</span></button>
     </div>
     <aside id="pal" aria-label="Elementos"></aside>
     <div id="stageWrap">
@@ -2531,6 +2561,8 @@ async function syncNow(manual){
   if(CL.busy){CL.again=true;return}
   CL.busy=true;setCloud('sync');
   try{
+    const dc=await checkDevice(false);
+    if(dc&&dc.ok===false&&dc.why==='removed'){CL.busy=false;toast('El administrador desconectó este dispositivo: volvé a entrar');cloudLogout(true);return}
     const up=await cloudPush();
     const down=await cloudPull();
     if(!S.lib.length&&!meta().seeded){meta().seeded=true;saveMeta();addExamples();await cloudPush()}
@@ -2549,7 +2581,7 @@ function reloadData(){
 }
 function acctUI(){
   const b=$('#bAcct');if(!b)return;
-  b.hidden=!CFG;$('#acctName').textContent=AUTH?AUTH.name:'Invitado';
+  b.hidden=!CFG;$('#acctName').textContent=AUTH?(AUTH.name+(AUTH.admin?' · admin':'')):'Invitado';
   if(!AUTH)setCloud('');
 }
 function showLogin(on){
@@ -2566,7 +2598,17 @@ async function doLogin(){
   b.disabled=false;b.textContent='Entrar';
   if(!r.ok){err(r.status===0?'No hay conexión con el servidor':(r.status===400||r.status===401)?'Usuario o contraseña incorrectos':'No se pudo entrar ('+r.status+')');return}
   const guestLib=rawGet('pf.lib',[]).filter(x=>x&&!String(x.id).startsWith('demo-')),guestSess=rawGet('pf.sess',[]).filter(x=>x&&!String(x.id).startsWith('demo-'));
-  keepAuth(r.j,u.includes('@')?userOf(u):u.toLowerCase());rawSet('dt.guest',null);CL.meta=null;
+  keepAuth(r.j,u.includes('@')?userOf(u):u.toLowerCase());
+  const dc=await checkDevice(true);
+  if(dc&&dc.ok===false){
+    const devs=(dc.devices||[]).map(d=>'• '+(d.name||'Dispositivo')+' ('+fmtAgo(d.last_seen)+')').join('<br>');
+    try{await fetch(CFG.url+'/auth/v1/logout',{method:'POST',headers:{apikey:CFG.key,Authorization:'Bearer '+AUTH.at}})}catch(e){}
+    AUTH=null;rawSet('dt.auth',null);
+    const e=$('#lgErr');e.innerHTML=`Esta cuenta ya se está usando en ${dc.max||2} dispositivos:<br>${devs}<br>Pedile al administrador que libere uno.`;e.hidden=false;
+    return;
+  }
+  rawSet('dt.guest',null);CL.meta=null;
+  checkAdmin().then(acctUI);
   showLogin(false);acctUI();reloadData();
   toast('Hola '+AUTH.name+': trayendo tu biblioteca…');
   await syncNow();
@@ -2591,9 +2633,11 @@ function openAcct(){
   const m=meta(),n=S.lib.length;
   openModal('Tu cuenta',`<p style="margin-top:0"><b style="font-size:18px">${esc(AUTH.name)}</b></p>
   <p class="muted">${n} ejercicio(s) y ${S.sess.length} sesión(es) en tu biblioteca. ${CL.state==='ok'?'Todo guardado en la nube.':CL.state==='off'?'Sin conexión: se sube cuando vuelva internet.':CL.state==='err'?'Hubo un problema al sincronizar, se reintenta solo.':'Sincronizando…'}</p>
+  ${AUTH.admin?`<button class="btn pri" id="acAdm" style="width:100%;justify-content:center;margin-bottom:8px">${ic('sliders',15)}Panel de administrador</button>`:''}
   <div class="mrow" style="flex-wrap:wrap;gap:8px"><button class="btn" id="acSync">${ic('repeat',15)}Sincronizar ahora</button><button class="btn danger" id="acOut">Cerrar sesión</button></div>
   <p class="muted" style="font-size:12px;margin-bottom:0">Al cerrar sesión se borra la copia de tu cuenta de este dispositivo (sigue guardada en la nube).</p>`);
   $('#acSync').onclick=()=>{closeModal();syncNow(true)};
+  const ad=$('#acAdm');if(ad)ad.onclick=()=>openAdmin();
   $('#acOut').onclick=()=>{closeModal();ask('¿Cerrar sesión en este dispositivo?','Cerrar sesión',()=>cloudLogout())};
 }
 function cloudInit(){
@@ -2607,9 +2651,100 @@ function cloudInit(){
   addEventListener('online',()=>{if(AUTH)syncNow()});
   addEventListener('offline',()=>{if(AUTH)setCloud('off')});
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&AUTH)syncNow()});
-  if(AUTH){setTimeout(()=>syncNow(),400);return true}
+  if(AUTH){setTimeout(()=>{syncNow();checkAdmin().then(acctUI)},400);return true}
   if(!rawGet('dt.guest',false))showLogin(true);
   return false;
+}
+
+
+/* ============ dispositivos y administración ============ */
+function devId(){let d=rawGet('dt.dev',null);if(!d){d='d'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);rawSet('dt.dev',d)}return d}
+function devName(){
+  const u=navigator.userAgent||'';
+  const os=/iPhone/.test(u)?'iPhone':/iPad/.test(u)?'iPad':/Android/.test(u)?(/Mobile/.test(u)?'Celular Android':'Tablet Android'):/Windows/.test(u)?'Windows':/Mac OS X/.test(u)?'Mac':/Linux/.test(u)?'Linux':'Dispositivo';
+  const br=/Edg\//.test(u)?'Edge':/OPR\//.test(u)?'Opera':/Firefox\//.test(u)?'Firefox':/CriOS|Chrome\//.test(u)?'Chrome':/Safari\//.test(u)?'Safari':'Navegador';
+  return (window.matchMedia&&matchMedia('(display-mode: standalone)').matches?'App ':'')+br+' en '+os;
+}
+async function rpc(name,args){
+  const r=await api('/rest/v1/rpc/'+name,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(args||{})});
+  let j=null;try{j=await r.json()}catch(e){}
+  return{ok:r.ok,status:r.status,data:j,msg:(j&&(j.message||j.msg||j.hint))||('Error '+r.status)};
+}
+/* devuelve true si el dispositivo puede seguir; 404 = todavía no está el SQL del panel: no se limita */
+async function checkDevice(allowNew){
+  if(!AUTH)return{ok:true};
+  let r;try{r=await rpc('device_check',{dev:devId(),nm:devName(),allow_new:!!allowNew})}catch(e){return{ok:true,net:true}}
+  if(!r.ok)return{ok:true,skip:true};
+  return r.data||{ok:true};
+}
+async function checkAdmin(){
+  if(!AUTH)return false;
+  try{const r=await rpc('is_admin',{});const a=!!(r.ok&&r.data===true);if(AUTH&&AUTH.admin!==a){AUTH.admin=a;rawSet('dt.auth',AUTH)}return a}catch(e){return !!(AUTH&&AUTH.admin)}
+}
+const fmtAgo=iso=>{if(!iso)return 'nunca';const d=(Date.now()-new Date(iso).getTime())/1000;if(d<90)return 'recién';if(d<3600)return 'hace '+Math.round(d/60)+' min';if(d<86400)return 'hace '+Math.round(d/3600)+' h';const n=Math.round(d/86400);return n===1?'ayer':'hace '+n+' días'};
+const genPass=()=>{const a='abcdefghjkmnpqrstuvwxyz',n='23456789';let p='';for(let i=0;i<5;i++)p+=a[Math.floor(Math.random()*a.length)];for(let i=0;i<3;i++)p+=n[Math.floor(Math.random()*n.length)];return p};
+function credBox(usr,pass,title){
+  const msg=`Hola! Tu acceso a Deportac:\nUsuario: ${usr}\nContraseña: ${pass}\nEntrá en ${location.origin}${location.pathname}`;
+  openModal(title||'Datos para pasarle al profe',`<div class="card" style="padding:12px 14px;font-size:16px;line-height:1.7"><b>Usuario:</b> ${esc(usr)}<br><b>Contraseña:</b> <code style="font-size:17px">${esc(pass)}</code></div>
+  <p class="muted">Copialo y mandáselo por WhatsApp. Anotalo: la contraseña no se puede volver a ver.</p>
+  <div class="mrow"><button class="btn" id="cbBack">Volver al panel</button><button class="btn pri" id="cbCopy">${ic('copy',15)}Copiar mensaje</button></div>`);
+  $('#cbCopy').onclick=()=>{const done=()=>toast('Copiado: pegalo en WhatsApp');if(navigator.clipboard)navigator.clipboard.writeText(msg).then(done,()=>toast('No se pudo copiar'));else toast('Seleccioná y copiá a mano')};
+  $('#cbBack').onclick=()=>openAdmin();
+}
+async function openAdmin(){
+  openModal('Panel de administrador',`<p class="muted">Cargando profes…</p>`);
+  const r=await rpc('admin_list',{});
+  if(!r.ok){$('#mBody').innerHTML=`<p>No se pudo abrir el panel: ${esc(r.msg)}</p>`;return}
+  const L=r.data||[];
+  const row=u=>`<tr data-id="${u.id}" data-u="${esc(u.usuario)}">
+    <td><b>${esc(u.usuario)}</b>${u.es_admin?' <span class="tagadm">admin</span>':''}${u.bloqueado?' <span class="tagblk">bloqueado</span>':''}<div class="muted sm">Entró ${fmtAgo(u.ultima)} · ${u.ejercicios} ejercicio(s)</div></td>
+    <td class="c"><button class="btn sm" data-ad="devs" title="Ver dispositivos">${u.dispositivos}/${u.es_admin?'∞':'2'}</button></td>
+    <td class="acts"><button class="btn sm" data-ad="pass">Contraseña</button>${u.es_admin?'':`<button class="btn sm" data-ad="${u.bloqueado?'unblock':'block'}">${u.bloqueado?'Desbloquear':'Bloquear'}</button><button class="btn sm danger" data-ad="del" aria-label="Borrar">${ic('trash',14)}</button>`}</td></tr>`;
+  $('#mTitle').textContent='Panel de administrador';
+  $('#mBody').innerHTML=`
+  <div class="admnew"><b>Nuevo profe</b>
+    <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">
+      <input id="adU" placeholder="usuario (ej: juanperez)" autocapitalize="none" spellcheck="false" style="flex:1 1 150px">
+      <input id="adP" placeholder="contraseña" style="flex:1 1 120px">
+      <button class="btn" id="adGen" title="Inventar una contraseña">Generar</button>
+      <button class="btn pri" id="adNew">${ic('plus',15)}Crear</button>
+    </div></div>
+  <div class="admtbl"><table><tr><th>Profe (${L.length})</th><th class="c">Dispositivos</th><th></th></tr>${L.map(row).join('')}</table></div>
+  <p class="muted sm" style="margin-bottom:0">Cada cuenta entra en 2 dispositivos como máximo. Si un profe cambia de celular, liberale uno tocando el número. Los que no se usan hace 30 días se liberan solos.</p>`;
+  $('#adGen').onclick=()=>{$('#adP').value=genPass()};
+  $('#adNew').onclick=async()=>{
+    const u=$('#adU').value.trim().toLowerCase(),p=$('#adP').value.trim();
+    if(!u||!p){toast('Completá usuario y contraseña (o tocá Generar)');return}
+    $('#adNew').disabled=true;const x=await rpc('admin_create',{usr:u,pass:p});$('#adNew').disabled=false;
+    if(!x.ok){toast(x.msg);return}
+    credBox(u,p,'Profe creado');
+  };
+  $('#mBody').onclick=async e=>{
+    const b=e.target.closest('[data-ad]');if(!b)return;
+    const tr=b.closest('tr'),id=tr.dataset.id,u=tr.dataset.u,a=b.dataset.ad;
+    if(a==='pass'){
+      openModal('Nueva contraseña para '+u,`<p class="muted">Al cambiarla, cualquiera que esté usando esta cuenta queda afuera (en menos de una hora) y se liberan sus dispositivos.</p>
+      <div class="row" style="gap:6px"><input id="npP" value="${genPass()}" style="flex:1"><button class="btn" id="npG">Generar otra</button></div>
+      <div class="mrow"><button class="btn" id="npX">Cancelar</button><button class="btn pri" id="npOk">Cambiar contraseña</button></div>`);
+      $('#npG').onclick=()=>{$('#npP').value=genPass()};$('#npX').onclick=()=>openAdmin();
+      $('#npOk').onclick=async()=>{const p=$('#npP').value.trim();const x=await rpc('admin_set_password',{uid:id,pass:p});if(!x.ok){toast(x.msg);return}credBox(u,p,'Contraseña cambiada')};
+    }else if(a==='block'||a==='unblock'){
+      const blk=a==='block';
+      ask(blk?`¿Bloquear a ${u}? Queda afuera en todos sus dispositivos. Sus ejercicios no se borran.`:`¿Desbloquear a ${u}?`,blk?'Bloquear':'Desbloquear',async()=>{
+        const x=await rpc('admin_block',{uid:id,blocked:blk});toast(x.ok?(blk?u+' bloqueado':u+' desbloqueado'):x.msg);openAdmin()});
+    }else if(a==='del'){
+      ask(`¿Borrar a ${u} para siempre? Se borran también todos sus ejercicios. No se puede deshacer.`,'Borrar',async()=>{
+        const x=await rpc('admin_delete',{uid:id});toast(x.ok?u+' borrado':x.msg);openAdmin()});
+    }else if(a==='devs'){
+      const x=await rpc('admin_devices',{uid:id});if(!x.ok){toast(x.msg);return}
+      const D=x.data||[];
+      openModal('Dispositivos de '+u,(D.length?`<div class="admtbl"><table>${D.map(d=>`<tr data-dev="${esc(d.device_id)}"><td><b>${esc(d.name||'Dispositivo')}</b><div class="muted sm">Usado ${fmtAgo(d.last_seen)} · desde ${new Date(d.created_at).toLocaleDateString()}</div></td><td class="acts"><button class="btn sm danger" data-fr="1">Liberar</button></td></tr>`).join('')}</table></div>`:'<p class="muted">No tiene dispositivos registrados.</p>')+
+      `<p class="muted sm">Liberar un dispositivo lo deja afuera: la próxima vez que abra la app le va a pedir usuario y contraseña.</p><div class="mrow"><button class="btn" id="dvBack">Volver al panel</button></div>`);
+      $('#dvBack').onclick=()=>openAdmin();
+      $('#mBody').onclick=async ev=>{const f=ev.target.closest('[data-fr]');if(!f)return;const dv=f.closest('tr').dataset.dev;
+        const y=await rpc('admin_free_device',{uid:id,dev:dv});toast(y.ok?'Dispositivo liberado':y.msg);if(y.ok)f.closest('tr').remove()};
+    }
+  };
 }
 
 /* ============ compartir un ejercicio con otro profe ============ */
