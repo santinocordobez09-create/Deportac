@@ -1,5 +1,5 @@
 /* Deportac: funciona sin internet. Cambiar el número de CACHE en cada actualización. */
-const CACHE='deportac-v18';
+const CACHE='deportac-v19';
 const FILES=['./','index.html','manifest.json','config.js','icon-192.png','icon-512.png','icon-maskable-512.png'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>Promise.all(FILES.map(f=>c.add(f).catch(()=>{})))).then(()=>self.skipWaiting()));
