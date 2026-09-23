@@ -1613,7 +1613,7 @@ function setProp(id,patch){S.ex.scenes.forEach((sc,i)=>{if(i>=S.cur){const e=sc.
 const SIZES=[.4,.5,.6,.75,.9,1,1.15,1.3,1.5,1.75,2,2.4,3];
 function sizeRow(o){
   const fk=(FIELDS[S.ex.field]||{}).k||1,pct=Math.round((o.s||1)/fk*100),kind=o.t==='ball'?'pelotas':o.t==='coach'?'entrenadores':'jugadores';
-  return `<div class="cr szr"><span class="lab">Tamaño</span><button class="btn icon" data-a="sz" data-v="-1" aria-label="Más chico" title="Más chico">−</button><b class="szv">${pct}%</b><button class="btn icon" data-a="sz" data-v="1" aria-label="Más grande" title="Más grande">+</button><button class="chip plain" data-a="szall" title="Poner este tamaño a todos">Todos los ${kind} así</button></div>`;
+  return `<div class="cr szr"><span class="lab">Tamaño</span><button class="btn icon" data-a="sz" data-v="-1" aria-label="Más chico" title="Más chico">−</button><b class="szv">${pct}%</b><button class="btn icon" data-a="sz" data-v="1" aria-label="Más grande" title="Más grande">+</button><button class="chip plain" data-a="szall" title="Poner este tamaño a todos">Todos los ${kind} así</button><span class="muted sm">Los nuevos salen de este tamaño</span></div>`;
 }
 function setSizeAll(id,sv){S.ex.scenes.forEach(sc=>{const e=sc.els.find(x=>x.id===id);if(e)e.s=sv})}
 function renderCard(){
@@ -1660,8 +1660,8 @@ $('#selbar').addEventListener('click',e=>{
   if(a==='mshow'){applyMeasure(o.id,{show:o.show===false});commit();renderCard();return}
   if(a==='del'){if(isEl)delEl(o.id);else if(o.k==='measure')S.ex.scenes.forEach(s=>{s.arrows=s.arrows.filter(x=>x.id!==o.id)});else sc.arrows=sc.arrows.filter(x=>x.id!==o.id);S.sel=null;renderCard();commit();return}
   if(a==='dup'){dupSel();return}
-  if(a==='sz'&&isEl){const cur=o.s||1,d=+b.dataset.v;let nx=d>0?SIZES.find(v=>v>cur+.01):SIZES.slice().reverse().find(v=>v<cur-.01);if(nx==null)nx=cur;setSizeAll(o.id,nx);commit();renderCard();return}
-  if(a==='szall'&&isEl){const sv=o.s||1,same=e=>o.t==='ball'?e.t==='ball':o.t==='coach'?e.t==='coach':e.t==='player';let n=0;S.ex.scenes.forEach(sc=>sc.els.forEach(e=>{if(same(e)&&e.s!==sv){e.s=sv;n++}}));commit();renderCard();toast(n?'Listo: todos del mismo tamaño':'Ya estaban todos de ese tamaño');return}
+  if(a==='sz'&&isEl){const cur=o.s||1,d=+b.dataset.v;let nx=d>0?SIZES.find(v=>v>cur+.01):SIZES.slice().reverse().find(v=>v<cur-.01);if(nx==null)nx=cur;setSizeAll(o.id,nx);rememberSize(Object.assign({},o,{s:nx}));commit();renderCard();return}
+  if(a==='szall'&&isEl){const sv=o.s||1,same=e=>o.t==='ball'?e.t==='ball':o.t==='coach'?e.t==='coach':e.t==='player';let n=0;S.ex.scenes.forEach(sc=>sc.els.forEach(e=>{if(same(e)&&e.s!==sv){e.s=sv;n++}}));S.szTip=true;rememberSize(o);commit();renderCard();toast(n?'Listo: todos del mismo tamaño':'Ya estaban todos de ese tamaño');return}
   if(a==='color'){if(isEl){setProp(o.id,{c:b.dataset.v});rememberColor(o,b.dataset.v)}else o.c=b.dataset.v;commit();renderCard();return}
   if(a==='pace'){
     const r=sc.routes[o.id],k=b.dataset.v;
@@ -1713,6 +1713,14 @@ function canRelocate(e){return S.cur===0||!S.ex.scenes[S.cur-1].els.some(x=>x.id
 const colKey=(t,sh,bk,stn)=>(t==='player'||t==='ball'||t==='coach'||stn)?null:t+(sh?':'+sh:'')+(bk?':'+bk:'');
 function memColor(it){const k=colKey(it.t,it.sh,it.bk,it.stn);if(!k)return null;const m=rawGet('pf.colors',{})||{};return m[k]||null}
 function rememberColor(o,c){const k=colKey(o.t,o.sh,o.bk,o.stn);if(!k||!hasColor(o.t))return;const m=rawGet('pf.colors',{})||{};if(m[k]===c)return;m[k]=c;rawSet('pf.colors',m);buildPalette()}
+const sizeKey=o=>o.t==='player'?'player':o.t==='ball'?'ball':o.t==='coach'?'coach':(o.t==='zone'||o.t==='shape'||o.t==='mat'||o.t==='net')?null:colKey(o.t,o.sh,o.bk,o.stn)||o.t;
+function memSize(it){const k=sizeKey(it);if(!k)return 1;const m=rawGet('pf.sizes',{})||{};return m[k]||1}
+function rememberSize(o){
+  const k=sizeKey(o);if(!k)return;const fk=(FIELDS[S.ex.field]||{}).k||1,r=Math.round((o.s||1)/fk*100)/100,m=rawGet('pf.sizes',{})||{};
+  if(Math.abs((m[k]||1)-r)<.005)return;
+  if(Math.abs(r-1)<.005)delete m[k];else m[k]=r;rawSet('pf.sizes',m);
+  if(!S.szTip){S.szTip=true;setTimeout(()=>toast(o.t==='player'?'Listo: los próximos jugadores que pongas salen de este tamaño':'Listo: los próximos que pongas salen de este tamaño'),60)}
+}
 function place(id,p){
   const it=ITEMS[id],sc=scene(),e={id:uid(),t:it.t,x:p.x,y:p.y,r:0,s:1,c:memColor(it)||it.c,l:''};
   if(it.t==='player'){e.l=it.l||String(sc.els.filter(x=>x.t==='player'&&x.c===it.c).length+1);e.pc='jog';e.st='work';e.nm='';e.note=''}
@@ -1721,7 +1729,7 @@ function place(id,p){
   if(it.t==='text')e.l='Texto';
   if(it.bk)e.bk=it.bk;
   if(it.t==='net'){e.w=it.w;e.h=it.h}
-  const fk=(FIELDS[S.ex.field]||{}).k;if(fk&&it.t!=='zone'&&it.t!=='shape'&&it.t!=='mat'&&it.t!=='net')e.s=fk;
+  if(it.t!=='zone'&&it.t!=='shape'&&it.t!=='mat'&&it.t!=='net'){const fk=(FIELDS[S.ex.field]||{}).k||1,ms=memSize(it);if(fk!==1||ms!==1)e.s=Math.round(fk*ms*1000)/1000}
   addEl(e);S.sel={k:'el',id:e.id,seg:null};S.act='move';S.menu=false;S.card=it.t==='text';renderCard();commit();
 }
 function snapTarget(p,exId){
@@ -1938,6 +1946,7 @@ function endDrag(ev){
     renderCard();return;
   }
   if(d.type==='tap'){if(o&&p&&S.act!=='move')addSeg(o,S.act,p);return}
+  if(d.moved&&d.type==='rs'){const o2=scene().els.find(x=>x.id===d.id);if(o2&&o2.w==null)rememberSize(o2)}
   if(d.moved){commit();if(d.type==='wp'||d.type==='el'||d.type==='rs')renderCard()}else if(d.type==='el'||d.type==='ar'||d.type==='rs'){S.card=true;renderCard()}else paint();
 }
 stage.addEventListener('pointerup',endDrag);
