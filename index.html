@@ -284,6 +284,8 @@ body.zen header{display:none}
 
 #selbar{position:absolute;left:50%;transform:translateX(-50%);bottom:10px;width:min(600px,calc(100% - 16px));display:flex;flex-direction:column;gap:6px;background:var(--glass);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:16px;padding:8px 10px;box-shadow:var(--shadow);z-index:7}
 #selbar.top{top:44px;bottom:auto}
+#selbar .szr .btn.icon{font-size:20px;font-weight:800;width:38px}
+#selbar .szv{min-width:46px;text-align:center;font:800 16px 'Barlow Condensed',sans-serif}
 #selbar .btn{min-height:34px;padding:5px 10px}
 #selbar .btn.icon{width:34px;padding:0}
 #selbar input,#selbar select{min-height:34px;padding:5px 9px;width:auto}
@@ -467,7 +469,8 @@ body.mob #topnote{max-width:calc(100% - 110px);font-size:12.5px;top:8px}
 body.mob #topnote.act{flex-wrap:wrap;justify-content:center}
 body.mob #legend{display:none}
 body.mob #selbar{bottom:6px;padding:6px 8px;width:calc(100% - 12px)}
-body.mob #selbar.top{top:8px;width:calc(100% - 64px);left:calc(50% - 26px)}
+body.mob #selbar.top{top:8px;bottom:auto;width:calc(100% - 64px);left:calc(50% - 26px)}
+body.mob #selbar{max-height:52%;overflow:auto}
 body.mob #hint{padding:14px 14px}
 body.mob #hint .hbtns .btn{flex:1 1 130px}
 body.mob .rb{width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:17px}
@@ -1024,7 +1027,7 @@ const segSpeed=g=>g.k==='pass'?PASS_V:(g.v>0?g.v:PACES[g.p||'jog'].v);
 const lum=h=>{const n=parseInt(h.slice(1),16);return .299*(n>>16)+.587*((n>>8)&255)+.114*(n&255)};
 const hasColor=t=>t!=='ball'&&t!=='goal'&&t!=='minigoal'&&t!=='coach'&&t!=='net';
 const BOXY={zone:1,shape:1,mat:1,net:1};
-const resizable=e=>e&&e.t!=='player'&&e.t!=='ball'&&e.t!=='coach';
+const resizable=e=>!!e;
 function grip(e){
   const b=elBox(e),r=(e.r||0)*Math.PI/180;
   const lx=b.r?b.r*.72:b.hw,ly=b.r?b.r*.72:b.hh;
@@ -1034,7 +1037,7 @@ function setSize(e,p){
   const r=-(e.r||0)*Math.PI/180,dx=p.x-e.x,dy=p.y-e.y;
   const lx=Math.abs(dx*Math.cos(r)-dy*Math.sin(r)),ly=Math.abs(dx*Math.sin(r)+dy*Math.cos(r));
   if(BOXY[e.t]){e.w=Math.max(1.5,lx*2);e.h=Math.max(1,ly*2)}
-  else{const b=elBox({...e,s:1}),base=b.r?b.r*.72:Math.hypot(b.hw,b.hh);e.s=Math.min(6,Math.max(.35,Math.hypot(lx,ly)/(base||1)))}
+  else{const b=elBox({...e,s:1}),base=b.r?b.r*.72:Math.hypot(b.hw,b.hh),mx=isMover(e)||e.t==='coach'?3:6;e.s=Math.min(mx,Math.max(.35,Math.hypot(lx,ly)/(base||1)))}
 }
 const isMover=e=>e&&(e.t==='player'||e.t==='ball');
 
@@ -1489,7 +1492,7 @@ function renderTo(cv,fr,key,o){
   if(!fr.play&&S.dist&&!o.small)fr.routes.forEach(R=>drawDist(ctx,R));
   if(fr.tseg)drawTseg(ctx,fr.tseg);
   ctx.restore();
-  if(o.sel&&!fr.play)drawSel(ctx,fr,o.sel);
+  if(o.sel&&!fr.play)drawSel(ctx,fr,o.sel,k);
   return{k,ox,oy};
 }
 function drawTseg(ctx,t){
@@ -1499,17 +1502,17 @@ function drawTseg(ctx,t){
   const L=dist(a,b);ctx.save();ctx.font=`800 1.35px ${FONT}`;const txt=fmtM(L),w=ctx.measureText(txt).width+1.1;
   ctx.fillStyle='rgba(8,14,11,.78)';ctx.fillRect(b.x-w/2,b.y-3.9,w,1.9);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(txt,b.x,b.y-2.95);ctx.restore();
 }
-function drawSel(ctx,fr,sel){
+function drawSel(ctx,fr,sel,k){k=k||10;
   ctx.save();ctx.strokeStyle='#38bdf8';ctx.lineWidth=.22;
   if(sel.k==='el'){
     const e=fr.els.find(x=>x.id===sel.id);
     if(e){
       ctx.save();ctx.translate(e.x,e.y);ctx.rotate((e.r||0)*Math.PI/180);ctx.setLineDash([.7,.5]);const b=elBox(e);
       if(b.r){circ(ctx,0,0,b.r+.2);ctx.stroke()}else ctx.strokeRect(-b.hw,-b.hh,b.hw*2,b.hh*2);
-      if(resizable(e)&&!S.pv){const gx=b.r?b.r*.72:b.hw,gy=b.r?b.r*.72:b.hh;
-        ctx.setLineDash([]);ctx.fillStyle='#38bdf8';ctx.strokeStyle='#fff';ctx.lineWidth=.22;
-        ctx.beginPath();ctx.rect(gx-.75,gy-.75,1.5,1.5);ctx.fill();ctx.stroke();
-        ctx.strokeStyle='#0b120e';ctx.lineWidth=.16;ctx.beginPath();ctx.moveTo(gx-.35,gy+.3);ctx.lineTo(gx+.3,gy-.35);ctx.stroke()}
+      if(resizable(e)&&!S.pv){const gx=b.r?b.r*.72:b.hw,gy=b.r?b.r*.72:b.hh,g=Math.max(1.5,20*(S.dpr||1)/k)/2,u=g/.75;
+        ctx.setLineDash([]);ctx.fillStyle='#38bdf8';ctx.strokeStyle='#fff';ctx.lineWidth=.22*u;
+        ctx.beginPath();ctx.rect(gx-g,gy-g,2*g,2*g);ctx.fill();ctx.stroke();
+        ctx.strokeStyle='#0b120e';ctx.lineWidth=.16*u;ctx.beginPath();ctx.moveTo(gx-.35*u,gy+.3*u);ctx.lineTo(gx+.3*u,gy-.35*u);ctx.stroke()}
       ctx.restore();
     }
     const R=fr.routes.find(x=>x.e.id===sel.id);
@@ -1606,6 +1609,13 @@ $('#radial').addEventListener('click',e=>{
 /* ============ selección y tarjeta de propiedades ============ */
 function selObj(){if(!S.sel)return null;const sc=scene();return S.sel.k==='el'?sc.els.find(e=>e.id===S.sel.id):sc.arrows.find(a=>a.id===S.sel.id)}
 function setProp(id,patch){S.ex.scenes.forEach((sc,i)=>{if(i>=S.cur){const e=sc.els.find(x=>x.id===id);if(e)Object.assign(e,patch)}})}
+/* tamaño fácil: − / + y "todos iguales" (jugadores, DT y pelota) */
+const SIZES=[.4,.5,.6,.75,.9,1,1.15,1.3,1.5,1.75,2,2.4,3];
+function sizeRow(o){
+  const fk=(FIELDS[S.ex.field]||{}).k||1,pct=Math.round((o.s||1)/fk*100),kind=o.t==='ball'?'pelotas':o.t==='coach'?'entrenadores':'jugadores';
+  return `<div class="cr szr"><span class="lab">Tamaño</span><button class="btn icon" data-a="sz" data-v="-1" aria-label="Más chico" title="Más chico">−</button><b class="szv">${pct}%</b><button class="btn icon" data-a="sz" data-v="1" aria-label="Más grande" title="Más grande">+</button><button class="chip plain" data-a="szall" title="Poner este tamaño a todos">Todos los ${kind} así</button></div>`;
+}
+function setSizeAll(id,sv){S.ex.scenes.forEach(sc=>{const e=sc.els.find(x=>x.id===id);if(e)e.s=sv})}
 function renderCard(){
   const b=$('#selbar'),o=selObj();
   renderRadial();
@@ -1626,9 +1636,11 @@ function renderCard(){
       if(r.carry)h+=`<div class="cr"><span class="info">${ic('drib',15)} Se mueve con el balón</span><button class="chip plain" data-a="nocarry">Deja el balón</button></div>`;
       else if(nb)h+=`<div class="cr"><span class="info">Tiene el balón al lado y lo deja donde está</span><button class="chip plain" data-a="docarry">Que lo lleve</button></div>`;}
     if(r&&r.segs.some(g=>g.q))h+=`<div class="cr"><span class="info">Se traslada sin flecha (lo ves solo al reproducir)</span><button class="chip plain" data-a="showq">Mostrar la flecha</button></div>`;
+    h+=sizeRow(o);
     h+=`<div class="cr"><input id="cC" class="note" maxlength="90" placeholder="Consigna (ej: 3 desmarques y vuelve)" value="${esc(o.note||'')}" aria-label="Consigna">${inf?`<label class="lab" style="display:inline-flex;gap:4px;align-items:center">Tiempo<input id="cT" class="num" style="width:74px!important" type="number" min="0.5" step="0.1" value="${inf.T.toFixed(1)}" aria-label="Tiempo total en segundos">s</label><span class="info">${fmtM(inf.L)}${inf.T>0?' · '+(inf.L/inf.T*3.6).toFixed(1)+' km/h':''}</span>`:''}${seg!=null&&r&&r.segs[seg]?`<button class="btn" data-a="delseg">Quitar tramo</button>`:''}<button class="btn pri" data-a="done">${ic('check')}Listo</button></div>`;
   }else if(o.t==='ball'){
     const r=sc.routes[o.id],inf=r&&r.segs.length?routeInfo(o,r):null;
+    h+=sizeRow(o);
     h+=`<div class="cr"><span class="info">${inf?'Pase de '+fmtM(inf.L):'Balón: elegí Pasar para moverlo'}</span><button class="btn" data-a="dup" title="Duplicar">${ic('copy')}</button><button class="btn pri" data-a="done">${ic('check')}Listo</button></div>`;
   }else{
     h+=`<div class="cr">`;
@@ -1648,6 +1660,8 @@ $('#selbar').addEventListener('click',e=>{
   if(a==='mshow'){applyMeasure(o.id,{show:o.show===false});commit();renderCard();return}
   if(a==='del'){if(isEl)delEl(o.id);else if(o.k==='measure')S.ex.scenes.forEach(s=>{s.arrows=s.arrows.filter(x=>x.id!==o.id)});else sc.arrows=sc.arrows.filter(x=>x.id!==o.id);S.sel=null;renderCard();commit();return}
   if(a==='dup'){dupSel();return}
+  if(a==='sz'&&isEl){const cur=o.s||1,d=+b.dataset.v;let nx=d>0?SIZES.find(v=>v>cur+.01):SIZES.slice().reverse().find(v=>v<cur-.01);if(nx==null)nx=cur;setSizeAll(o.id,nx);commit();renderCard();return}
+  if(a==='szall'&&isEl){const sv=o.s||1,same=e=>o.t==='ball'?e.t==='ball':o.t==='coach'?e.t==='coach':e.t==='player';let n=0;S.ex.scenes.forEach(sc=>sc.els.forEach(e=>{if(same(e)&&e.s!==sv){e.s=sv;n++}}));commit();renderCard();toast(n?'Listo: todos del mismo tamaño':'Ya estaban todos de ese tamaño');return}
   if(a==='color'){if(isEl){setProp(o.id,{c:b.dataset.v});rememberColor(o,b.dataset.v)}else o.c=b.dataset.v;commit();renderCard();return}
   if(a==='pace'){
     const r=sc.routes[o.id],k=b.dataset.v;
@@ -1778,7 +1792,8 @@ stage.addEventListener('pointerdown',ev=>{
   try{stage.setPointerCapture(ev.pointerId)}catch(e){}
   S.px={x:ev.clientX,y:ev.clientY};
   const gsel=selObj();
-  if(gsel&&S.sel.k==='el'&&resizable(gsel)&&!S.pv&&dist(p,grip(gsel))<1.5){
+  const grR=S.vt?Math.max(1.5,22*(S.dpr||1)/S.vt.k):1.5;
+  if(gsel&&S.sel.k==='el'&&resizable(gsel)&&!S.pv&&dist(p,grip(gsel))<grR&&dist(p,grip(gsel))<dist(p,gsel)){
     S.drag={type:'rs',id:gsel.id,moved:false};S.menu=false;return;
   }
   const wi=wpHit(p);
