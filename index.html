@@ -2386,6 +2386,31 @@ function drawVideoBar(g,W,bh,BAR,ex,fr,el,INTRO,T,total){
     g.fillStyle='#b8c9be';g.font=`600 ${Math.round(W*.02)}px ${FONT}`;g.fillText(sub,W/2,bh/2+30);g.globalAlpha=1;
   }
 }
+/* límite de videos por mes (lo maneja el administrador) */
+async function videoQuota(take){
+  if(!CFG)return{ok:true,local:true};
+  if(navigator.onLine===false)return{ok:false,kind:'offline'};
+  try{
+    let r;
+    if(AUTH)r=await rpc('video_quota',{p_take:!!take,p_code:'',p_device:''});
+    else{const t=rawGet('dt.trial',null);if(!t)return{ok:false,kind:'notrial'};r=await anonRpc('video_quota',{p_take:!!take,p_code:t.code,p_device:devId()})}
+    if(r.status===404||(r.msg&&/video_quota|does not exist|404/.test(r.msg)))return{ok:true,nosql:true};
+    if(!r.ok)return{ok:false,kind:'offline'};
+    return r.data||{ok:true};
+  }catch(e){return{ok:false,kind:'offline'}}
+}
+function videoLeftTxt(q){if(!q||q.local||q.nosql||q.unlimited||q.lim==null)return'';const n=Math.max(0,q.lim-q.used);return q.kind==='trial'?`Prueba gratis: te ${n===1?'queda 1 video':'quedan '+n+' videos'} para descargar.`:`Este mes te ${n===1?'queda 1 video':'quedan '+n+' videos'} para descargar (de ${q.lim}).`}
+function showVideoLimit(q){
+  const t=rawGet('dt.trial',null)||{},mes=new Date();mes.setMonth(mes.getMonth()+1,1);
+  const prox=mes.toLocaleDateString('es-AR',{day:'numeric',month:'long'});
+  let h;
+  if(q.kind==='offline')h=`<p style="margin-top:0">Para descargar un video necesitás <b>conexión a internet</b>. Podés seguir viendo la animación en la app sin señal.</p><div class="mrow"><button class="btn pri" id="vlOk">Entendido</button></div>`;
+  else if(q.kind==='trial'||q.kind==='notrial')h=`<p style="margin-top:0">En la prueba gratis podés descargar <b>${q.lim||0} ${q.lim===1?'video':'videos'}</b>${q.kind==='trial'?' y ya los usaste':''}.</p><p class="muted">La animación la podés seguir viendo en la app, y el PDF y la imagen se descargan sin límite.</p>
+    <a class="btn wa" href="${waLink(`Hola! Soy ${t.name||''}. Estoy probando Deportac (código ${t.code||''}) y quiero contratar la membresía.`)}" target="_blank" rel="noopener">Contratar membresía</a><p class="wanum" style="text-align:center">WhatsApp <b>3468 52-6277</b></p>`;
+  else h=`<p style="margin-top:0">Ya descargaste los <b>${q.lim} ${q.lim===1?'video':'videos'}</b> de este mes. Se renuevan el <b>${esc(prox)}</b>.</p><p class="muted">Mientras tanto podés mostrar la animación desde la app, y el PDF y la imagen se descargan sin límite.</p>
+    <a class="btn wa" href="${waLink(`Hola! Soy ${AUTH?AUTH.name:''}. Llegué al límite de videos del mes en Deportac y quiero consultar por más.`)}" target="_blank" rel="noopener">Pedir más videos por WhatsApp</a>`;
+  openModal('Descarga de videos',h);const b=$('#vlOk');if(b)b.onclick=closeModal;
+}
 function openVideoDialog(){
   stopPreview();const ex=S.ex,n=ex.scenes.filter(x=>x.aud).length;
   S.vspd=S.vspd||S.speed||1;
@@ -2400,7 +2425,10 @@ function openVideoDialog(){
   const pb=document.createElement('button');pb.className='btn';pb.id='vPdf';pb.innerHTML=ic('doc')+'Descargar también la hoja en PDF con los pasos';
   pb.onclick=()=>{closeModal();exportPDF()};$('#mBody').appendChild(pb);
   $('#mBody').onclick=e=>{audAction(e)};
-  $('#vX').onclick=closeModal;$('#vGo').onclick=()=>exportVideo();
+  $('#vX').onclick=closeModal;
+  const qs=document.createElement('p');qs.className='muted';qs.id='vQuota';$('#mBody').insertBefore(qs,$('#mBody').querySelector('.mrow'));
+  videoQuota(false).then(q=>{const el=$('#vQuota');if(el)el.innerHTML=q.ok?esc(videoLeftTxt(q)):'<b>'+(q.kind==='offline'?'Necesitás internet para descargar videos.':'Llegaste al límite de videos.')+'</b>'});
+  $('#vGo').onclick=async()=>{const b=$('#vGo');b.disabled=true;const q=await videoQuota(false);b.disabled=false;if(!q.ok){showVideoLimit(q);return}exportVideo()};
 }
 async function exportVideo(){
   const ex=S.ex;
@@ -2453,6 +2481,8 @@ async function exportVideo(){
   rec.stop();await stopped;try{actx&&actx.close()}catch(err){}
   if(cancel){closeModal();return}
   const type=(rec.mimeType||mime||'video/webm').split(';')[0],blob=new Blob(chunks,{type}),url=URL.createObjectURL(blob),ext=type.includes('mp4')?'mp4':'webm';
+  const qv=await videoQuota(true);if(!qv.ok){URL.revokeObjectURL(url);showVideoLimit(qv);return}
+  if(videoLeftTxt(qv))setTimeout(()=>toast(videoLeftTxt(qv).replace('te quedan','ahora te quedan').replace('te queda','ahora te queda')),600);
   const nm=(ex.name||'ejercicio').replace(/[^\w\-]+/g,'_');
   const mb=(blob.size/1048576).toFixed(1);
   openModal('Video listo para guardar',`<video class="prev" src="${url}" controls playsinline></video>
@@ -2750,7 +2780,7 @@ async function recStart(kind,withPlay){
   let stream;
   try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(e){toast('No hay permiso para usar el micrófono. Podés subir un audio ya grabado.');return}
   const mimes=['audio/webm;codecs=opus','audio/mp4','audio/webm'],mime=mimes.find(m=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m))||'';
-  const mr=new MediaRecorder(stream,mime?{mimeType:mime,audioBitsPerSecond:40000}:undefined),chunks=[];
+  const mr=new MediaRecorder(stream,mime?{mimeType:mime,audioBitsPerSecond:24000}:undefined),chunks=[];
   mr.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
   const rec={kind,si:S.cur,narr:!!withPlay,mr,stream,t0:performance.now(),max:Math.min(180,aLeft)};S.rec=rec;
   mr.onstop=async()=>{
@@ -3449,10 +3479,14 @@ async function openAdmin(tab){
   const row=u=>`<tr data-id="${u.id}" data-u="${esc(u.usuario)}">
     <td><b>${esc(u.usuario)}</b>${u.es_admin?' <span class="tagadm">admin</span>':''}${u.bloqueado?' <span class="tagblk">bloqueado</span>':''}<div class="muted sm">Entró ${fmtAgo(u.ultima)} · ${u.ejercicios} ejercicio(s)</div></td>
     <td class="c"><button class="btn sm" data-ad="devs" title="Ver dispositivos">${u.dispositivos}/${u.es_admin?'∞':'2'}</button></td>
+    <td class="c"><button class="btn sm" data-ad="vlim" title="Videos descargados este mes / límite"${u.es_admin||!VI?' disabled':''}>${vcell(u)}</button>${VI&&VI.audio&&VI.audio.users&&VI.audio.users[u.id]?`<div class="muted sm">audios ${mb(VI.audio.users[u.id])}</div>`:''}</td>
     <td class="acts">${u.es_admin?'':`<button class="btn sm" data-ad="pkg">Paquetes${PK.length?' ('+npk(u.id)+')':''}</button>`}<button class="btn sm" data-ad="pass">Contraseña</button>${u.es_admin?'':`<button class="btn sm" data-ad="${u.bloqueado?'unblock':'block'}">${u.bloqueado?'Desbloquear':'Bloquear'}</button><button class="btn sm danger" data-ad="del" aria-label="Borrar">${ic('trash',14)}</button>`}</td></tr>`;
   $('#mTitle').textContent='Panel de administrador';
   const PK=await admPkgs()||[];
   const npk=id=>PK.filter(p=>(p.users||[]).includes(id)).length;
+  let VI=null;try{const rv=await rpc('admin_video_info',{});if(rv.ok)VI=rv.data}catch(e){}
+  const mb=b=>b==null?'—':b<1048576?Math.max(1,Math.round(b/1024))+' KB':(b/1048576).toFixed(b<10485760?1:0)+' MB';
+  const vcell=u=>{if(u.es_admin)return'∞';if(!VI)return'—';const x=(VI.users||{})[u.id]||{},lim=x.lim!=null?x.lim:VI.per_month;return`${x.used||0}/${lim}${x.lim!=null?'*':''}`};
   $('#mBody').innerHTML=admTabs('us')+`
   <div class="admnew"><b>Nuevo profe</b>
     <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">
@@ -3461,7 +3495,16 @@ async function openAdmin(tab){
       <button class="btn" id="adGen" title="Inventar una contraseña">Generar</button>
       <button class="btn pri" id="adNew">${ic('plus',15)}Crear</button>
     </div></div>
-  <div class="admtbl"><table><tr><th>Profe (${L.length})</th><th class="c">Dispositivos</th><th></th></tr>${L.map(row).join('')}</table></div>
+  ${VI?`<div class="admnew"><b>Videos que se pueden descargar</b>
+    <div class="row" style="gap:10px;flex-wrap:wrap;margin-top:6px;align-items:center">
+      <label class="muted sm" style="display:flex;align-items:center;gap:6px">Cada profe, por mes<input id="vcM" type="number" min="0" max="1000" value="${VI.per_month}" style="width:78px"></label>
+      <label class="muted sm" style="display:flex;align-items:center;gap:6px">En la prueba gratis (total)<input id="vcT" type="number" min="0" max="1000" value="${VI.trial_total}" style="width:78px"></label>
+      <button class="btn pri" id="vcSave">Guardar</button>
+    </div>
+    <div class="muted sm" style="margin-top:6px">Se renuevan el 1° de cada mes. Tocá el número de un profe para darle un límite distinto (queda marcado con *). El PDF y la imagen no tienen límite.</div>
+    <div class="muted sm" style="margin-top:6px">Espacio de los audios grabados: <b>${mb(VI.audio&&VI.audio.total)}</b> de 1 GB del plan gratis de Supabase (≈ ${VI.audio&&VI.audio.total!=null?Math.max(0,Math.round((1073741824-VI.audio.total)/184320)).toLocaleString('es-AR'):'—'} minutos más de audio).</div>
+  </div>`:`<div class="admnew muted sm">Para limitar los videos por mes y ver el espacio de los audios, pegá el código LIMITES en el SQL Editor de Supabase.</div>`}
+  <div class="admtbl"><table><tr><th>Profe (${L.length})</th><th class="c">Dispositivos</th><th class="c">Videos del mes</th><th></th></tr>${L.map(row).join('')}</table></div>
   <p class="muted sm" style="margin-bottom:0">Cada cuenta entra en 2 dispositivos como máximo. Si un profe cambia de celular, liberale uno tocando el número. Los que no se usan hace 30 días se liberan solos.</p>`;
   bindTabs();$('#mBody').onchange=null;
   $('#adGen').onclick=()=>{$('#adP').value=genPass()};
@@ -3472,10 +3515,19 @@ async function openAdmin(tab){
     if(!x.ok){toast(x.msg);return}
     credBox(u,p,'Profe creado');
   };
+  if($('#vcSave'))$('#vcSave').onclick=async()=>{const x=await rpc('admin_video_cfg',{p_per_month:Math.max(0,+$('#vcM').value||0),p_trial:Math.max(0,+$('#vcT').value||0)});toast(x.ok?'Límites de videos guardados':x.msg);openAdmin()};
   $('#mBody').onclick=async e=>{
     const b=e.target.closest('[data-ad]');if(!b)return;
     const tr=b.closest('tr'),id=tr.dataset.id,u=tr.dataset.u,a=b.dataset.ad;
     if(a==='pkg'){pkgsForUser(id,u);return}
+    if(a==='vlim'){
+      const x=(VI.users||{})[id]||{};
+      openModal('Videos por mes de '+u,`<p class="muted" style="margin-top:0">Este mes descargó <b>${x.used||0}</b>. El límite general es <b>${VI.per_month}</b> por mes.</p>
+      <label class="muted sm">Límite para este profe<input id="vuN" type="number" min="0" max="1000" value="${x.lim!=null?x.lim:VI.per_month}"></label>
+      <div class="mrow"><button class="btn" id="vuDef">Usar el general</button><button class="btn pri" id="vuOk">Guardar</button></div>`);
+      $('#vuDef').onclick=async()=>{const r=await rpc('admin_video_user',{p_uid:id,p_lim:null});toast(r.ok?'Usa el límite general':r.msg);openAdmin()};
+      $('#vuOk').onclick=async()=>{const r=await rpc('admin_video_user',{p_uid:id,p_lim:Math.max(0,+$('#vuN').value||0)});toast(r.ok?'Límite guardado':r.msg);openAdmin()};
+      return}
     if(a==='pass'){
       openModal('Nueva contraseña para '+u,`<p class="muted">Al cambiarla, cualquiera que esté usando esta cuenta queda afuera (en menos de una hora) y se liberan sus dispositivos.</p>
       <div class="row" style="gap:6px"><input id="npP" value="${genPass()}" style="flex:1"><button class="btn" id="npG">Generar otra</button></div>
@@ -3618,8 +3670,9 @@ async function openTrialAdmin(){
   if(!r.ok){$('#mBody').innerHTML=admTabs('tr')+`<p>No se pudieron cargar los códigos de prueba. ¿Pegaste el código de PRUEBAS en el SQL Editor de Supabase?</p><p class="muted sm">${esc(r.msg)}</p>`;bindTabs();return}
   const L=r.data||[],uses=L.flatMap(c=>(c.uses||[]).filter(u=>!u.removed));
   let BL=[];try{const rb=await rpc('admin_invite_blocked',{});if(rb.ok&&Array.isArray(rb.data))BL=rb.data}catch(e){}
+  let TVI=null;try{const rv=await rpc('admin_video_info',{});if(rv.ok)TVI=rv.data}catch(e){}
   const act=uses.filter(u=>daysLeftIso(u.exp)>0).length,end=uses.length-act;
-  const person=u=>{const dl=daysLeftIso(u.exp);return`<div class="trp" data-uid="${u.id}"><div class="who"><b>${esc(u.name)}</b><span class="muted sm">Empezó el ${fmtDate(u.start)} · entró ${fmtAgo(u.seen)}${u.dev?' · '+esc(u.dev):''}</span></div>
+  const person=u=>{const dl=daysLeftIso(u.exp);return`<div class="trp" data-uid="${u.id}"><div class="who"><b>${esc(u.name)}</b><span class="muted sm">Empezó el ${fmtDate(u.start)} · entró ${fmtAgo(u.seen)}${u.dev?' · '+esc(u.dev):''}${TVI?' · videos '+(((TVI.trials||{})[u.id])||0)+'/'+TVI.trial_total:''}</span></div>
     ${u.removed?'<span class="tagend">dado de baja</span>':dl>0?`<span class="tagok">${dl===1?'queda 1 día':'quedan '+dl+' días'}</span>`:'<span class="tagend">vencida</span>'}
     ${u.removed?`<button class="btn sm" data-tu="back">Reactivar</button>`:`<button class="btn sm" data-tu="ext">Sumar días</button><button class="btn sm danger" data-tu="rm">Dar de baja</button>`}</div>`};
   const card=c=>{const us=c.uses||[],n=us.filter(u=>!u.removed).length;return`<div class="trcode${c.active?'':' off'}" data-code="${esc(c.code)}">
