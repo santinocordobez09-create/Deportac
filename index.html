@@ -1049,6 +1049,12 @@ const lum=h=>{const n=parseInt(h.slice(1),16);return .299*(n>>16)+.587*((n>>8)&2
 const hasColor=t=>t!=='ball'&&t!=='goal'&&t!=='minigoal'&&t!=='coach'&&t!=='net';
 const BOXY={zone:1,shape:1,mat:1,net:1};
 const resizable=e=>!!e;
+/* manija para girar: circulito arriba del elemento (en jugadores y pelota no hace falta) */
+const rotatable=e=>!!e&&!isMover(e)&&e.t!=='coach';
+function rotHandle(e,k){
+  const b=elBox(e),fk=(FIELDS[S.ex.field]||{}).k||1,kk=k||(S.vt?S.vt.k:10),H=Math.max(1.6*fk,30*(S.dpr||1)/kk),d=(b.r?b.r:b.hh)+H,r=(e.r||0)*Math.PI/180;
+  return{x:e.x+d*Math.sin(r),y:e.y-d*Math.cos(r),d,rr:Math.max(.9*fk,13*(S.dpr||1)/kk)};
+}
 function grip(e){
   const b=elBox(e),r=(e.r||0)*Math.PI/180;
   const lx=b.r?b.r*.72:b.hw,ly=b.r?b.r*.72:b.hh;
@@ -1534,6 +1540,18 @@ function drawSel(ctx,fr,sel,k){k=k||10;
         ctx.setLineDash([]);ctx.fillStyle='#38bdf8';ctx.strokeStyle='#fff';ctx.lineWidth=.22*u;
         ctx.beginPath();ctx.rect(gx-g,gy-g,2*g,2*g);ctx.fill();ctx.stroke();
         ctx.strokeStyle='#0b120e';ctx.lineWidth=.16*u;ctx.beginPath();ctx.moveTo(gx-.35*u,gy+.3*u);ctx.lineTo(gx+.3*u,gy-.35*u);ctx.stroke()}
+      if(rotatable(e)&&!S.pv&&!S.ex.ro){
+        const h=rotHandle(e,k),R=h.rr,u=R/.9,top=b.r?b.r:b.hh;
+        ctx.setLineDash([]);ctx.strokeStyle='#38bdf8';ctx.lineWidth=.14*u;ctx.beginPath();ctx.moveTo(0,-top);ctx.lineTo(0,-h.d+R);ctx.stroke();
+        ctx.fillStyle='#fff';ctx.strokeStyle='#38bdf8';ctx.lineWidth=.2*u;circ(ctx,0,-h.d,R);ctx.fill();ctx.stroke();
+        ctx.strokeStyle='#0369a1';ctx.lineWidth=.16*u;ctx.beginPath();ctx.arc(0,-h.d,R*.5,-2.6,1.2);ctx.stroke();
+        const ax=Math.cos(1.2)*R*.5,ay=-h.d+Math.sin(1.2)*R*.5;ctx.fillStyle='#0369a1';ctx.beginPath();ctx.moveTo(ax+.28*u,ay-.02*u);ctx.lineTo(ax-.12*u,ay+.3*u);ctx.lineTo(ax-.2*u,ay-.18*u);ctx.closePath();ctx.fill();
+        if(S.drag&&S.drag.type==='rot'&&S.drag.id===e.id){
+          ctx.rotate(-(e.r||0)*Math.PI/180);const t=Math.round(((e.r||0)%360+360)%360)+'°',hx=h.x-e.x,hy=h.y-e.y;
+          ctx.font=`800 ${R*1.3}px ${FONT}`;ctx.textAlign='center';ctx.textBaseline='middle';const tw=ctx.measureText(t).width+R*.9;
+          ctx.fillStyle='rgba(3,105,161,.95)';ctx.fillRect(hx-tw/2,hy-R*2.9,tw,R*1.6);ctx.fillStyle='#fff';ctx.fillText(t,hx,hy-R*2.1);
+        }
+      }
       ctx.restore();
     }
     const R=fr.routes.find(x=>x.e.id===sel.id);
@@ -1667,7 +1685,7 @@ function renderCard(){
     h+=`<div class="cr">`;
     if(o.t==='text'||o.t==='zone')h+=`<input class="nm" id="sbL" style="width:150px!important" maxlength="${o.t==='text'?28:24}" value="${esc(o.l||'')}" placeholder="${o.t==='text'?'Texto':'Nombre de la zona'}" aria-label="Etiqueta">`;
     if(hasColor(o.t))h+=COLORS.map(c=>sw(c)).join('')+'<span class="sep"></span>';
-    h+=`<span class="info">Estirá o achicá arrastrando el cuadradito celeste</span><button class="btn icon" data-a="rotl" title="Girar a la izquierda">${ic('rotl')}</button><button class="btn icon" data-a="rotr" title="Girar a la derecha">${ic('rotr')}</button><button class="btn icon" data-a="smaller" title="Más chico">${ic('minus')}</button><button class="btn icon" data-a="bigger" title="Más grande">${ic('plus')}</button><button class="btn icon" data-a="dup" title="Duplicar">${ic('copy')}</button><button class="btn icon danger" data-a="del" title="Eliminar">${ic('trash')}</button></div>`;
+    h+=`<span class="info">Cuadradito celeste: tamaño · circulito de arriba: girar</span><button class="btn icon" data-a="rotl" title="Girar a la izquierda">${ic('rotl')}</button><button class="btn icon" data-a="rotr" title="Girar a la derecha">${ic('rotr')}</button><button class="btn icon" data-a="smaller" title="Más chico">${ic('minus')}</button><button class="btn icon" data-a="bigger" title="Más grande">${ic('plus')}</button><button class="btn icon" data-a="dup" title="Duplicar">${ic('copy')}</button><button class="btn icon danger" data-a="del" title="Eliminar">${ic('trash')}</button></div>`;
   }
   b.innerHTML=h;if(S.sel.k==='ar'&&o.k!=='measure'){const s=$('#sbK');if(s)s.value=o.k}
   paint();
@@ -1692,10 +1710,8 @@ $('#selbar').addEventListener('click',e=>{
   }
   if(a==='rest'){setProp(o.id,{st:o.st==='rest'?'work':'rest'});commit();renderCard();return}
   if(a==='delseg'){const r=sc.routes[o.id];if(r&&r.segs.length){r.segs.splice(S.sel.seg,1);if(!r.segs.length)delete sc.routes[o.id]}S.sel.seg=null;commit();renderCard();return}
-  if(a==='rotl')setProp(o.id,{r:((o.r||0)-45+360)%360});
-  else if(a==='rotr')setProp(o.id,{r:((o.r||0)+45)%360});
-  else if(a==='smaller')setProp(o.id,{s:Math.max(.4,(o.s||1)/1.2)});
-  else if(a==='bigger')setProp(o.id,{s:Math.min(4,(o.s||1)*1.2)});
+  if(a==='rotl'||a==='rotr'){const nr=((Math.round((o.r||0)/15)*15+(a==='rotl'?-15:15))%360+360)%360;S.ex.scenes.forEach(sc=>{const x=sc.els.find(q=>q.id===o.id);if(x)x.r=nr})}
+  else if(a==='smaller'||a==='bigger'){const fk=(FIELDS[S.ex.field]||{}).k||1,nv=a==='smaller'?Math.max(.35*fk,(o.s||1)/1.2):Math.min(4*fk,(o.s||1)*1.2);setProp(o.id,{s:nv});rememberSize(Object.assign({},o,{s:nv}))}
   else if(a==='straight'){o.cv=false;o.cx=(o.x1+o.x2)/2;o.cy=(o.y1+o.y2)/2}
   commit();
 });
@@ -1835,6 +1851,7 @@ stage.addEventListener('pointerdown',ev=>{
   if(gsel&&S.sel.k==='el'&&resizable(gsel)&&!S.pv&&dist(p,grip(gsel))<grR&&dist(p,grip(gsel))<dist(p,gsel)){
     S.drag={type:'rs',id:gsel.id,moved:false};S.menu=false;return;
   }
+  if(gsel&&S.sel.k==='el'&&rotatable(gsel)&&!S.pv){const h=rotHandle(gsel);const ch=coreHit(p);if(dist(p,h)<h.rr*1.6&&!(ch&&ch.id!==gsel.id)){S.drag={type:'rot',id:gsel.id,moved:false};S.menu=false;return}}
   const wi=wpHit(p);
   if(wi>=0){S.sel.seg=wi;S.menu=false;S.card=true;S.drag={type:'wp',id:S.sel.id,i:wi,moved:false};renderCard();return}
   if(ITEMS[t]&&ITEMS[t].ar){
@@ -1926,6 +1943,11 @@ stage.addEventListener('pointermove',ev=>{
     setSize(o,p);
     S.ex.scenes.forEach(s=>{const q=s.els.find(x=>x.id===d.id);if(q&&q!==o){q.w=o.w;q.h=o.h;q.s=o.s}});
   }
+  else if(d.type==='rot'){
+    const o=sc.els.find(x=>x.id===d.id);if(o){let a=Math.atan2(p.x-o.x,-(p.y-o.y))*180/Math.PI;a=(a+360)%360;
+      const m=Math.round(a/15)*15;if(Math.abs(m-a)<5)a=m;a=Math.round(a)%360;
+      S.ex.scenes.forEach(s=>{const x=s.els.find(q=>q.id===d.id);if(x)x.r=a})}
+  }
   else if(d.type==='el'){const t=d.trash?{x:p.x-d.dx,y:p.y-d.dy}:guideSnap(d.id,{x:p.x-d.dx,y:p.y-d.dy});if(d.trash)S.guides=null;S.ex.scenes.forEach(s=>{const o=s.els.find(x=>x.id===d.id);if(o){o.x=t.x;o.y=t.y}});syncMeasures(S.ex)}
   else if(d.type==='mv'){
     const o=sc.els.find(x=>x.id===d.id);if(!o)return;
@@ -1979,7 +2001,8 @@ function endDrag(ev){
   }
   if(d.type==='tap'){if(o&&p&&S.act!=='move')addSeg(o,S.act,p);return}
   if(d.moved&&d.type==='rs'){const o2=scene().els.find(x=>x.id===d.id);if(o2&&o2.w==null)rememberSize(o2)}
-  if(d.moved){commit();if(d.type==='wp'||d.type==='el'||d.type==='rs')renderCard()}else if(d.type==='el'||d.type==='ar'||d.type==='rs'){S.card=true;renderCard()}else paint();
+  if(d.moved){commit();if(d.type==='wp'||d.type==='el'||d.type==='rs'||d.type==='rot')renderCard()}
+  else if(d.type==='rot')paint();else if(d.type==='el'||d.type==='ar'||d.type==='rs'){S.card=true;renderCard()}else paint();
 }
 stage.addEventListener('pointerup',endDrag);
 stage.addEventListener('pointercancel',()=>{S.drag=null;S.tseg=null;S.tmp=null;S.guides=null;hideTrash();paint()});
