@@ -229,8 +229,28 @@ body.toolsTop .pi canvas,body.toolsTop .pi svg.cur{width:48px;height:48px}
 .ptabs{display:none;gap:4px;padding:5px 8px 0;overflow-x:auto;border-bottom:1px solid var(--line);background:var(--panel2)}
 .ptab{flex:none;border:0;background:transparent;color:var(--muted);font:700 13.5px 'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:5px 11px 7px;border-bottom:2px solid transparent;cursor:pointer;border-radius:8px 8px 0 0}
 .ptab.on{color:var(--fg);border-bottom-color:var(--accent);background:var(--panel)}
-body.zen #pal,body.zen #tl #scenes,body.zen #freebar{display:none!important}
+/* cancha grande: se esconde lo de arriba pero se puede seguir trabajando (paleta finita y escenas) */
 body.zen header{display:none}
+body.zen.zclean #pal,body.zen.zclean #tl #scenes,body.zen.zclean #freebar,body.zen.zclean #bar,body.zen.zclean #bScFold{display:none!important}
+body.zen:not(.mob):not(.toolsTop) #v-board{--palw:92px}
+body.zen:not(.mob):not(.toolsTop) #pal{display:block;overflow-y:auto;overflow-x:hidden;padding:0 0 12px}
+body.zen:not(.mob):not(.toolsTop) #pal .ptabs{display:none}
+body.zen:not(.mob):not(.toolsTop) #pal .pg,body.zen:not(.mob):not(.toolsTop) #pal .pg.pfix{display:block;padding:6px 5px 0}
+body.zen:not(.mob):not(.toolsTop) #pal .pg h4{display:block;margin:8px 0 4px;font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:center}
+body.zen:not(.mob):not(.toolsTop) #pal .pgrid{display:grid;grid-template-columns:1fr;gap:5px}
+body.zen:not(.mob):not(.toolsTop) #pal .pi{font-size:10.5px;padding:4px 2px 5px;min-height:0}
+body.zen:not(.mob):not(.toolsTop) #pal .pi canvas,body.zen:not(.mob):not(.toolsTop) #pal .pi svg.cur{width:40px;height:40px}
+body.zen #tl .sc{height:34px}
+#zenBar{display:none}
+body.zen #zenBar{display:flex;position:absolute;left:10px;top:10px;z-index:4;gap:6px}
+body.zen #zenBar .btn{min-height:38px;padding:4px 12px;background:var(--glass);backdrop-filter:blur(6px);box-shadow:0 4px 14px rgba(0,0,0,.3)}
+body.mob.zen #zenBar{left:auto;right:8px;top:149px}
+body.mob.zen #zExit,body.mob.zen #zenBar span{display:none}
+body.mob.zen #zenBar .btn{width:40px;height:40px;min-height:40px;padding:0;border-radius:12px;justify-content:center}
+body.mob.free.zen #zenBar{top:102px}
+body.mob.zen #pal .pi{width:56px}
+body.mob.zen #pal .pi canvas,body.mob.zen #pal .pi svg.cur{width:34px;height:34px}
+body.mob.zen #pal .pi span{font-size:9.5px}
 #tl.mini .sc{width:38px;aspect-ratio:auto;height:30px;border-width:1.5px}
 #tl.mini .sc canvas{display:none}
 #tl.mini .sc span{position:static;display:flex;width:100%;height:100%;align-items:center;justify-content:center;background:transparent;font-size:14px}
@@ -498,7 +518,6 @@ body.mob #tp,body.mob #ap{max-height:40vh;max-height:40dvh;overflow:auto}
 body.mob .sc{width:84px}
 body.mob #bScFold{right:8px;top:auto;bottom:calc(7px + env(safe-area-inset-bottom));width:40px;height:30px;min-height:30px}
 body.mob #scenes{padding-right:48px}
-body.mob.zen #bScFold{display:none}
 body.mob #freebar{padding:5px 8px;gap:8px}
 body.mob #freebar .muted{display:none}
 body.mob #robar{padding:6px 8px;gap:8px}
@@ -648,6 +667,7 @@ body.mob .admtbl .acts .btn{margin:2px 0 2px 3px}
       <div id="radial" hidden></div>
       <div id="selbar" hidden></div>
       <div id="trash" hidden><span class="tcan"></span><b>Soltá acá para borrar</b></div>
+      <div id="zenBar"><button class="btn" id="zClean" title="Esconder o mostrar los elementos y las escenas"></button><button class="btn" id="zExit" title="Salir de cancha grande"></button></div>
       <div id="fabs"><button class="btn icon" id="fZen" aria-label="Cancha grande" title="Cancha grande"></button><button class="btn icon" id="fUndo" aria-label="Deshacer" title="Deshacer"></button><button class="btn icon" id="fRedo" aria-label="Rehacer" title="Rehacer"></button></div>
     </div>
     <div id="tl">
@@ -736,6 +756,7 @@ const store={
   quiet(k,v){return rawSet(nsKey(k),v)}
 };
 const ICONS={
+  eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   board:'<rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M12 5v14"/><circle cx="12" cy="12" r="2.6"/><path d="M2.5 9.5h2.5v5H2.5M21.5 9.5H19v5h2.5"/>',
   book:'<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 21H20v-3"/><path d="M8.5 7.5h7M8.5 11h5"/>',
   cal:'<rect x="3" y="4.5" width="18" height="16.5" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="m8.5 14.5 2.2 2.2 4.8-4.7"/>',
@@ -2105,6 +2126,11 @@ function renderScenes(){
   renderTiming();
 }
 /* ---- celular: diseño propio y menú "⋯" ---- */
+function zenUI(){
+  const c=document.body.classList.contains('zclean'),a=$('#zClean'),x=$('#zExit');if(!a)return;
+  a.innerHTML=ic(c?'plus':'eye',18)+`<span>${c?'Mostrar elementos':'Solo la cancha'}</span>`;
+  x.innerHTML=ic('shrink',18)+'<span>Salir</span>';
+}
 function setMob(){
   const w=window.innerWidth,h=window.innerHeight,coarse=!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
   const land=h<=500&&w>h&&(coarse||w<=1000),mob=w<=820||land;
@@ -2133,6 +2159,14 @@ function setTools(top,save){
 }
 function setZen(on){
   document.body.classList.toggle('zen',!!on);
+  if(!on)document.body.classList.remove('zclean');
+  zenUI();
+  /* en celular y compu además se oculta la barra del navegador (si el equipo lo permite) */
+  try{
+    const de=document.documentElement,fs=document.fullscreenElement||document.webkitFullscreenElement;
+    if(on&&!fs&&!S.noFs){const rq=de.requestFullscreen||de.webkitRequestFullscreen;if(rq){const pr=rq.call(de);if(pr&&pr.catch)pr.catch(()=>{})}}
+    if(!on&&fs){const ex=document.exitFullscreen||document.webkitExitFullscreen;if(ex){const pr=ex.call(document);if(pr&&pr.catch)pr.catch(()=>{})}}
+  }catch(e){}
   const b=$('#bZen');if(b)b.innerHTML=ic(on?'shrink':'expand');
   const f=$('#fZen');if(f)f.innerHTML=ic(on?'shrink':'expand',20);
   fit();
@@ -3808,6 +3842,10 @@ addEventListener('keydown',e=>{
   $('#exName').value=S.ex.name;syncSport();resetHist();renderScenes();renderCard();
   $('#sportBtn').onclick=openSportPick;
   $('#bMore').onclick=openMore;$('#fUndo').innerHTML=ic('undo',20);$('#fRedo').innerHTML=ic('redo',20);$('#fZen').innerHTML=ic('expand',20);
+  $('#zClean').onclick=()=>{document.body.classList.toggle('zclean');zenUI();fit()};
+  $('#zExit').onclick=()=>setZen(false);
+  const fsOff=()=>{if(!(document.fullscreenElement||document.webkitFullscreenElement)&&document.body.classList.contains('zen')){S.noFs=true;setZen(false);S.noFs=false}};
+  document.addEventListener('fullscreenchange',fsOff);document.addEventListener('webkitfullscreenchange',fsOff);
   $('#fUndo').onclick=()=>$('#bUndo').click();$('#fRedo').onclick=()=>$('#bRedo').click();$('#fZen').onclick=()=>$('#bZen').click();
   setMob();addEventListener('resize',setMob);addEventListener('orientationchange',()=>setTimeout(setMob,200));
   new ResizeObserver(fit).observe($('#stageWrap'));
